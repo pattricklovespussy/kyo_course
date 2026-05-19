@@ -963,20 +963,35 @@ async function openSessionBookings(i){
   document.getElementById('sb-time').textContent = s.time || '';
   const listEl = document.getElementById('sb-list');
   listEl.textContent = 'Đang tải…';
-  // fetch bookings by slot_key
-  const slotKey = encodeURIComponent(`${s.courseId}|${s.day}|${s.time}`);
+  // build params and use URLSearchParams to avoid double-encoding
+  const params = { slotKey: `${s.courseId}|${s.day}|${s.time}`, courseId: s.courseId };
   try{
-    const res = await fetch(`/api/bookings?slotKey=${slotKey}`);
-    if(!res.ok) throw new Error('Không tải được');
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`/api/bookings?${qs}`);
+    if(!res.ok){
+      const errBody = await res.text().catch(()=>null);
+      throw new Error(errBody || `HTTP ${res.status}`);
+    }
     const data = await res.json();
-    const rows = Array.isArray(data.bookings) ? data.bookings : [];
-    if(!rows.length){ listEl.innerHTML = '<div style="color:var(--tx3)">Chưa có người đăng ký cho buổi này.</div>'; }
-    else{
+    let rows = Array.isArray(data.bookings) ? data.bookings : [];
+    // fallback: if no rows for slotKey, try filter by courseId only
+    if(!rows.length){
+      const res2 = await fetch(`/api/bookings?${new URLSearchParams({ courseId: s.courseId }).toString()}`);
+      if(res2.ok){
+        const d2 = await res2.json();
+        rows = Array.isArray(d2.bookings) ? d2.bookings.filter(r=>r.slotKey===`${s.courseId}|${s.day}|${s.time}`) : [];
+      }
+    }
+    if(!rows.length){
+      listEl.innerHTML = '<div style="color:var(--tx3)">Chưa có người đăng ký cho buổi này.</div>';
+    } else {
       listEl.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--tx2)"><th>ID Booking</th><th>Discord ID</th><th>Họ tên</th><th>Thời gian</th></tr></thead><tbody>' +
         rows.map(r=>`<tr style="border-top:1px solid var(--b1)"><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.id}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.userId}</td><td style="padding:8px">${r.userName || ''}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.createdAt||''}</td></tr>`).join('') +
         '</tbody></table>';
     }
-  }catch(err){ listEl.innerHTML = `<div style="color:var(--red)">Lỗi tải danh sách: ${err.message}</div>`; }
+  }catch(err){
+    listEl.innerHTML = `<div style="color:var(--red)">Lỗi tải danh sách: ${err.message}</div>`;
+  }
   document.getElementById('sessionBookingsModal').classList.add('show');
 }
 
