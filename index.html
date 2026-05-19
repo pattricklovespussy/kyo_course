@@ -570,6 +570,20 @@ body.login-splash::after{content:'';position:fixed;inset:0;z-index:280;pointer-e
   </div>
   </div>
 
+<!-- Modal: Cancel Confirmation -->
+  <div class="ov" id="cancelConfirmOv" onclick="if(event.target===this)closeConfirmCancel()">
+  <div class="modal" style="text-align:center">
+    <div class="sico">⚠️</div>
+    <h2>Xác nhận huỷ buổi học</h2>
+    <p>Bạn có chắc muốn huỷ buổi học này không? Hành động sẽ giải phóng slot cho người khác.</p>
+    <div class="scard"><div class="sl">Buổi</div><div class="sv" id="cancelConfirmTitle">—</div></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn-ok" id="confirmCancelBtn" style="flex:1;background:var(--red);">Huỷ buổi này</button>
+      <button class="btn-ok" id="cancelCancelBtn" style="flex:1;background:var(--s3);border:1px solid var(--b2);">Bỏ qua</button>
+    </div>
+  </div>
+  </div>
+
 <script>
 const DISCORD_AUTH_URL = '/auth/discord';
 
@@ -955,14 +969,15 @@ function renderGrid(){
 
 function selCourse(id){
   if(!hasSchedule()) return;
-  const s=SLOTS.find(s=>s.courseId===id&&!s.full&&!isBookedSlot(s));if(!s)return;
+  const s=SLOTS.find(s=>s.courseId===id); if(!s) return;
   sel=(sel&&sel.courseId===id)?null:{courseId:id,day:s.day,time:s.time};
   updateBar();render();
 }
 function selSlot(cid,day,time){
   if(!hasSchedule()) return;
   const current = SLOTS.find(s=>s.courseId===cid&&s.day===day&&s.time===time);
-  if(current && (current.full || isBookedSlot(current))) return;
+  // allow selecting booked slots so user can cancel; only block selection if truly full and not owned
+  if(current && current.full && !isBookedSlot(current)) return;
   sel=(sel&&sel.courseId===cid&&sel.day===day&&sel.time===time)?null:{courseId:cid,day,time};
   updateBar();render();
 }
@@ -991,7 +1006,7 @@ function updateBar(){
     const myBooking = getBookedSlot();
     if (loggedIn && myBooking && myBooking.bookingId) {
       b.disabled = false;
-      b.textContent = 'Huỷ buổi học';
+      b.textContent = 'Huỷ khoá học này';
     } else {
       b.disabled = true;
       b.textContent = 'Đã giữ slot';
@@ -1033,9 +1048,21 @@ function handleBook(){
   if (!sel) return;
   const slot = SLOTS.find(s=>s.courseId===sel.courseId&&s.day===sel.day&&s.time===sel.time);
   if (slot && isBookedSlot(slot)){
-    return cancelBooking();
+    return openConfirmCancel();
   }
   if(!loggedIn){pendingBook=true;openLogin();}else doBook();
+}
+
+function openConfirmCancel(){
+  // show confirmation modal before cancelling
+  const bk = getBookedSlot();
+  const title = (bk && (bk.courseName || bk.courseId)) || '—';
+  const el = document.getElementById('cancelConfirmTitle'); if(el) el.textContent = title;
+  const ov = document.getElementById('cancelConfirmOv'); if(ov) ov.classList.add('show');
+}
+
+function closeConfirmCancel(){
+  const ov = document.getElementById('cancelConfirmOv'); if(ov) ov.classList.remove('show');
 }
 
 function cancelBooking(){
@@ -1157,6 +1184,8 @@ function attachListeners(){
   const dc=document.querySelector('.btn-dc'); if(dc) dc.addEventListener('click',doLogin);
   const ok=document.querySelector('.btn-ok'); if(ok) ok.addEventListener('click',closeSucc);
   const cancelOk=document.getElementById('cancelOkBtn'); if(cancelOk) cancelOk.addEventListener('click',closeCancel);
+  const confirmCancel=document.getElementById('confirmCancelBtn'); if(confirmCancel) confirmCancel.addEventListener('click',()=>{ closeConfirmCancel(); cancelBooking(); });
+  const cancelCancel=document.getElementById('cancelCancelBtn'); if(cancelCancel) cancelCancel.addEventListener('click',closeConfirmCancel);
   const chip=document.getElementById('uChip'); if(chip) chip.addEventListener('click',toggleProfileMenu);
   const logout=document.getElementById('logoutBtn'); if(logout) logout.addEventListener('click',()=>{window.location.href='/logout';});
   const notifySoon=document.getElementById('notifySoonBtn'); if(notifySoon) notifySoon.addEventListener('click',()=>{});
