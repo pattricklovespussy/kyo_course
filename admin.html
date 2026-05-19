@@ -409,6 +409,13 @@ input:checked + .slider:before{transform:translateX(18px);background:#fff;}
         <label>Số slot đã dùng</label>
         <input type="number" id="c-used" placeholder="0" min="0">
       </div>
+      <div class="form-row">
+        <label>Khoá đăng ký</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="font-size:12px;color:var(--tx2);">Khi khoá, người dùng sẽ không thể đăng ký khóa này</label>
+          <input type="checkbox" id="c-locked" style="width:18px;height:18px;margin-left:auto;">
+        </div>
+      </div>
 
       <!-- Sessions sub-section -->
       <div class="sessions-section">
@@ -699,7 +706,8 @@ function renderCourses(){
   }
   list.innerHTML = db.courses.map((c,i)=>{
     const left = Math.max(0, c.total - c.used);
-    const full = left <= 0;
+    const locked = Boolean(c.locked);
+    const full = locked || left <= 0;
     const sessions = (c.sessions||[]).map(s=>`<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;background:var(--s3);border:1px solid var(--b1);padding:1px 6px;border-radius:4px;color:var(--tx2);margin:1px;">${DAY_LABELS[s.day]||'?'} ${s.time}</span>`).join('');
     return`<div class="tbl-row courses-grid">
       <div>
@@ -709,8 +717,9 @@ function renderCourses(){
       <div class="tr-cell"><span class="badge ${TOPIC_CLS[c.topic]||''}">${TOPIC_LABELS[c.topic]||c.topic}</span></div>
       <div class="tr-cell"><span class="badge ${LEVEL_CLS[c.level]||'all'}">${c.level}</span></div>
       <div class="tr-cell" style="font-family:'JetBrains Mono',monospace;">${c.used}/${c.total}</div>
-      <div class="tr-cell"><span class="badge ${full?'adv':'beg'}">${full?'Đã đầy':'Còn '+left+' slot'}</span></div>
+      <div class="tr-cell"><span class="badge ${locked? 'adv' : (full?'adv':'beg')}">${locked? 'Đã khoá' : (full?'Đã đầy':'Còn '+left+' slot')}</span></div>
       <div class="tr-actions">
+        <button class="btn-edit" onclick="toggleLockCourse(${i})">${c.locked ? 'Mở khoá' : 'Khoá'}</button>
         <button class="btn-edit" onclick="openEditCourse(${i})">Sửa</button>
         <button class="btn-del" onclick="confirmDelCourse(${i})">Xóa</button>
       </div>
@@ -832,6 +841,7 @@ function openEditCourse(i){
   document.getElementById('c-level').value = c.level;
   document.getElementById('c-total').value = c.total;
   document.getElementById('c-used').value = c.used||0;
+  document.getElementById('c-locked').checked = Boolean(c.locked);
   renderSessionRows();
   document.getElementById('courseModal').classList.add('show');
 }
@@ -887,12 +897,13 @@ function saveCourse(){
   const level = document.getElementById('c-level').value;
   const total = parseInt(document.getElementById('c-total').value)||20;
   const used = parseInt(document.getElementById('c-used').value)||0;
+  const locked = Boolean(document.getElementById('c-locked')?.checked);
   if(!name||!id){alert('Vui lòng điền tên và ID khóa học.');return;}
   // Duplicate ID check
   if(editCourseIndex === -1){
     if(db.courses.find(c=>c.id===id)){alert('ID này đã tồn tại. Vui lòng dùng ID khác.');return;}
   }
-  const course = {id, name, topic, level, total, used, sessions: courseSessionRows.map(s=>({...s}))};
+  const course = {id, name, topic, level, total, used, locked, sessions: courseSessionRows.map(s=>({...s}))};
   if(editCourseIndex === -1){
     db.courses.push(course);
   } else {
@@ -978,6 +989,14 @@ function confirmResetAll(){
 function closeDelModal(){
   document.getElementById('delModal').classList.remove('show');
   delCallback = null;
+}
+
+function toggleLockCourse(i){
+  if(!adminAuthed) return setAuthNote('Vui lòng đăng nhập admin để thay đổi trạng thái.', true);
+  const c = db.courses[i]; if(!c) return;
+  c.locked = !Boolean(c.locked);
+  saveDB();
+  renderCourses();
 }
 
 // ── IMPORT / EXPORT ──

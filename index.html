@@ -659,6 +659,7 @@ function normalizeCourse(raw, idx){
     name: String(raw?.name || 'Untitled course'),
     topic: raw?.topic || 'mp',
     level: raw?.level || 'Beginner',
+    locked: Boolean(raw?.locked),
     used: Number.isFinite(used) ? used : 0,
     total: Number.isFinite(total) ? total : 0,
     sessions: sessions.map((s, sIdx)=>({
@@ -676,7 +677,7 @@ function rebuildSchedule(data){
   SLOTS = [];
   COURSES.forEach(c=>c.sessions.forEach(s=>{
     const left=Math.max(0,c.total-c.used);
-    SLOTS.push({courseId:c.id,courseName:c.name,day:s.day,time:s.time,label:s.label,full:s.forceFull||(c.used>=c.total),left,total:c.total,topic:c.topic,level:c.level});
+    SLOTS.push({courseId:c.id,courseName:c.name,day:s.day,time:s.time,label:s.label,full:s.forceFull||Boolean(c.locked)||(c.used>=c.total),locked:Boolean(c.locked),left,total:c.total,topic:c.topic,level:c.level});
   }));
 }
 
@@ -950,7 +951,10 @@ function renderGrid(){
       const booked = isBookedSlot(s);
       const cls='slot'+(s.full||booked?' full':isSel?' sel':'')+(ok?'':' hidden');
       const ssCls=s.full?'sstatus':'sstatus '+(s.left<=3?'low':'ok');
-      const statusText = booked ? 'Đã giữ' : (s.full ? 'Đã đầy' : `Còn ${s.left}`);
+      let statusText = '';
+      if (booked) statusText = 'Đã giữ';
+      else if (s.locked) statusText = 'Đã khoá';
+      else statusText = (s.full ? 'Đã đầy' : `Còn ${s.left}`);
       return`<div class="${cls}" data-course-id="${s.courseId}" data-day="${s.day}" data-time="${s.time}" ${s.full||!ok?'data-disabled="1"':''}>
         <span class="scat ${s.topic}">${TL[s.topic]||''}</span>
         <div class="stime">${s.time}</div>

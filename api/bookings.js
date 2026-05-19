@@ -86,6 +86,10 @@ module.exports = async (req, res) => {
         return res.status(404).json({ error: 'Course not found' });
       }
 
+      if (course.locked) {
+        return res.status(403).json({ error: 'Course is locked for booking' });
+      }
+
       const existingByUser = await supabase
         .from(SUPABASE_BOOKINGS_TABLE)
         .select('id, slot_key')
