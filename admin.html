@@ -493,6 +493,23 @@ input:checked + .slider:before{transform:translateX(18px);background:#fff;}
         <button class="btn-del-confirm" id="delConfirmBtn">Xóa</button>
       </div>
     </div>
+
+      <!-- MODAL: Session Bookings -->
+      <div class="ov" id="sessionBookingsModal" onclick="if(event.target===this)closeSessionBookings()">
+        <div class="modal">
+          <div class="modal-hdr">
+            <h2>Danh sách đăng ký</h2>
+            <button class="mx" onclick="closeSessionBookings()">✕</button>
+          </div>
+          <div class="modal-body">
+            <div style="margin-bottom:8px;color:var(--tx2);">Buổi: <strong id="sb-course-name">—</strong> · <span id="sb-day">—</span> · <span id="sb-time">—</span></div>
+            <div id="sb-list">Đang tải…</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeSessionBookings()">Đóng</button>
+          </div>
+        </div>
+      </div>
   </div>
 </div>
 
@@ -745,6 +762,7 @@ function renderSessions(){
       <div class="tr-cell"><span class="badge ${TOPIC_CLS[s.topic]||''}">${TOPIC_LABELS[s.topic]||s.topic}</span></div>
       <div class="tr-cell" style="font-family:'JetBrains Mono',monospace;">${s.used}/${s.total} <span style="color:var(--tx3);">(còn ${left})</span></div>
       <div class="tr-actions">
+        <button class="btn-edit" onclick="openSessionBookings(${i})">Xem đăng ký</button>
         <button class="btn-edit" onclick="openEditSessionFromFlat(${i})">Sửa khóa</button>
       </div>
     </div>`;
@@ -936,6 +954,33 @@ function openEditSessionFromFlat(i){
   if(cIdx===-1) return;
   openEditCourse(cIdx);
 }
+
+async function openSessionBookings(i){
+  const s = db.sessions[i];
+  if(!s) return;
+  document.getElementById('sb-course-name').textContent = s.courseName || s.courseId;
+  document.getElementById('sb-day').textContent = DAY_LABELS[s.day] || s.day;
+  document.getElementById('sb-time').textContent = s.time || '';
+  const listEl = document.getElementById('sb-list');
+  listEl.textContent = 'Đang tải…';
+  // fetch bookings by slot_key
+  const slotKey = encodeURIComponent(`${s.courseId}|${s.day}|${s.time}`);
+  try{
+    const res = await fetch(`/api/bookings?slotKey=${slotKey}`);
+    if(!res.ok) throw new Error('Không tải được');
+    const data = await res.json();
+    const rows = Array.isArray(data.bookings) ? data.bookings : [];
+    if(!rows.length){ listEl.innerHTML = '<div style="color:var(--tx3)">Chưa có người đăng ký cho buổi này.</div>'; }
+    else{
+      listEl.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--tx2)"><th>ID Booking</th><th>Discord ID</th><th>Họ tên</th><th>Thời gian</th></tr></thead><tbody>' +
+        rows.map(r=>`<tr style="border-top:1px solid var(--b1)"><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.id}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.userId}</td><td style="padding:8px">${r.userName || ''}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.createdAt||''}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+  }catch(err){ listEl.innerHTML = `<div style="color:var(--red)">Lỗi tải danh sách: ${err.message}</div>`; }
+  document.getElementById('sessionBookingsModal').classList.add('show');
+}
+
+function closeSessionBookings(){ document.getElementById('sessionBookingsModal').classList.remove('show'); }
 
 function closeSessionModal(){
   document.getElementById('sessionModal').classList.remove('show');

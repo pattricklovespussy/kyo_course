@@ -56,11 +56,15 @@ module.exports = async (req, res) => {
   try {
     if (req.method === 'GET') {
       const userId = String(req.query?.userId || req.query?.user_id || '').trim();
+      const courseId = String(req.query?.courseId || req.query?.course_id || '').trim();
+      const slotKey = String(req.query?.slotKey || req.query?.slot_key || '').trim();
       let query = supabase
         .from(SUPABASE_BOOKINGS_TABLE)
         .select('*')
         .order('created_at', { ascending: false });
       if (userId) query = query.eq('user_id', userId);
+      if (courseId) query = query.eq('course_id', courseId);
+      if (slotKey) query = query.eq('slot_key', slotKey);
       const { data, error } = await query;
       if (error) return res.status(500).json({ error: error.message || error });
       return res.status(200).json({ bookings: (data || []).map(normalizeBooking) });
