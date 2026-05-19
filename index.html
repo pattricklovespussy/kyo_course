@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradingWithKyo — Schedule Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0d0d0d;
+  --s1:#141414;
+  --s2:#1a1a1a;
+  --s3:#222;
+  --s4:#2a2a2a;
+  --b1:rgba(255,255,255,0.05);
+  --b2:rgba(255,255,255,0.09);
+  --b3:rgba(255,255,255,0.14);
+  --gold:#e8b84b;
+  --gold2:#f5cf7a;
+  --gold3:rgba(232,184,75,0.10);
+  --gold4:rgba(232,184,75,0.20);
+  --tx:#efefef;
+  --tx2:#888;
+  --tx3:#444;
+  --green:#4db87a;
+  --red:#e06060;
+  --blue:#5b8def;
+  --disc:#5865F2;
+  --r:8px;
+}
+html{height:100%;}
+body{background:var(--bg);color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;gap:14px;overflow:auto;-webkit-overflow-scrolling:touch;}
+
+/* ── TICKER ── */
+.ticker{height:28px;background:#0a0a0a;border-bottom:1px solid var(--b1);overflow:hidden;display:flex;align-items:center;position:relative;flex-shrink:0;}
+.ticker::before,.ticker::after{content:'';position:absolute;top:0;bottom:0;width:56px;z-index:2;pointer-events:none;}
+.ticker::before{left:0;background:linear-gradient(to right,#0a0a0a,transparent);}
+.ticker::after{right:0;background:linear-gradient(to left,#0a0a0a,transparent);}
+.ticker-track{display:flex;animation:tick 55s linear infinite;white-space:nowrap;}
+.ticker-track:hover{animation-play-state:paused;}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ti{display:inline-flex;align-items:center;gap:6px;padding:0 20px;font-size:10.5px;font-family:'JetBrains Mono',monospace;border-right:1px solid var(--b1);}
+.ti-s{color:var(--tx2);font-weight:600;font-size:9.5px;}
+.ti-p{color:var(--tx);font-weight:500;}
+.ti-c{font-size:9.5px;font-weight:600;}
+.ti-c.u{color:var(--green);}
+.ti-c.d{color:var(--red);}
+.ti-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0;}
+.ti-dot.u{background:var(--green);}
+.ti-dot.d{background:var(--red);}
+
+/* ── HEADER ── */
+header{height:56px;background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 24px;gap:20px;flex-shrink:0;position:relative;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--tx);flex-shrink:0;}
+.lm{width:32px;height:32px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#0d0d0d;letter-spacing:-0.5px;}
+.logo-text{display:flex;flex-direction:column;line-height:1.15;}
+.logo-main{font-weight:800;font-size:13.5px;letter-spacing:-0.3px;}
+.logo-sub{font-size:9.5px;font-weight:500;color:var(--tx3);letter-spacing:0.2px;}
+nav{display:flex;align-items:center;gap:2px;flex:1;}
+nav a{padding:6px 12px;color:var(--tx2);text-decoration:none;font-size:12px;font-weight:500;border-radius:6px;transition:all .15s;}
+nav a:hover{color:var(--tx);background:var(--b1);}
+nav a.act{color:var(--tx);background:var(--b2);}
+.hdr-r{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.uchip{display:none;align-items:center;gap:6px;padding:5px 12px 5px 5px;background:var(--s2);border:1px solid var(--b2);border-radius:99px;font-size:12px;font-weight:600;}
+.uchip.show{display:flex;}
+.uav{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#d4951a);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#0d0d0d;}
+.btn-login{display:flex;align-items:center;gap:7px;background:var(--disc);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.btn-login:hover{background:#4752c4;}
+.btn-login svg{width:13px;height:13px;}
+
+/* ── TOP STRIP: stats + next bar in one row ── */
+.top-strip{display:flex;align-items:stretch;border-bottom:1px solid var(--b1);background:var(--s1);flex-shrink:0;height:54px;}
+.stats{display:flex;border-right:1px solid var(--b1);}
+.stat{display:flex;align-items:center;gap:11px;padding:0 20px;border-right:1px solid var(--b1);}
+.stat:last-child{border-right:none;}
+.stat-ico{font-size:18px;flex-shrink:0;line-height:1;display:flex;align-items:center;justify-content:center;width:44px;height:38px;border-radius:8px;background:var(--s2);}
+.stat-ico svg{width:20px;height:20px;fill:var(--gold2);}
+.stat-n{font-size:17px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--gold2);letter-spacing:-0.5px;line-height:1;}
+.stat-l{font-size:9px;color:var(--tx3);font-weight:500;margin-top:3px;}
+.next-bar{flex:1;background:linear-gradient(90deg,rgba(232,184,75,0.06),transparent 60%);display:flex;align-items:center;gap:12px;padding:0 20px;min-width:0;}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(77,184,122,0.4);}50%{box-shadow:0 0 0 5px rgba(77,184,122,0);}}
+.next-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;background:var(--gold);color:#0d0d0d;padding:3px 8px;border-radius:4px;flex-shrink:0;}
+.next-info{flex:1;display:flex;align-items:center;gap:8px;min-width:0;}
+.next-title{font-size:12px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.next-meta{font-size:11px;color:var(--tx2);white-space:nowrap;flex-shrink:0;}
+.next-cd{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--gold2);background:var(--gold3);border:1px solid var(--gold4);padding:4px 11px;border-radius:5px;flex-shrink:0;}
+.btn-jump{background:var(--gold);color:#0d0d0d;border:none;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;flex-shrink:0;white-space:nowrap;}
+.btn-jump:hover{background:var(--gold2);}
+
+/* ── MAIN LAYOUT ── */
+.main{display:flex;flex:0 0 auto;min-height:0;overflow:visible;padding:0 18px 18px 18px;gap:18px;align-items:stretch;}
+
+/* ── SIDEBAR ── */
+.sb{width:308px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--b1);overflow:hidden;background:var(--s1);}
+.sb-head{padding:13px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-head h2{font-size:12.5px;font-weight:700;letter-spacing:-0.1px;color:var(--tx);}
+.sb-sort{background:none;border:1px solid var(--b2);color:var(--tx2);font-size:9.5px;font-weight:600;padding:4px 9px;border-radius:5px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.sb-sort:hover{color:var(--tx);border-color:var(--b3);}
+.sb-list{flex:1;overflow-y:auto;padding:10px;scrollbar-width:thin;scrollbar-color:var(--b2) transparent;}
+
+/* course card */
+.cc{padding:11px 12px;border-radius:9px;border:1px solid var(--b1);background:var(--bg);margin-bottom:6px;cursor:pointer;transition:all .15s;position:relative;}
+.cc::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2.5px;border-radius:2px;background:var(--b2);transition:all .15s;}
+.cc:hover{border-color:var(--b2);background:var(--s2);}
+.cc.sel{border-color:var(--gold);background:var(--gold3);}
+.cc.sel::before{background:var(--gold);}
+.cc-name{font-size:11.5px;font-weight:700;margin-bottom:8px;padding-left:4px;letter-spacing:-0.1px;line-height:1.3;}
+.cc-tags{display:flex;flex-wrap:wrap;gap:4px;padding-left:4px;}
+.tg{font-size:9.5px;font-weight:500;padding:2.5px 7px;border-radius:99px;background:var(--s2);border:1px solid var(--b2);color:var(--tx2);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.tg.g{background:var(--gold3);border-color:var(--gold4);color:var(--gold2);}
+.tg.r{background:rgba(224,96,96,0.08);border-color:rgba(224,96,96,0.22);color:var(--red);}
+.tg.gr{background:rgba(77,184,122,0.08);border-color:rgba(77,184,122,0.2);color:var(--green);}
+.tg.bl{background:rgba(91,141,239,0.08);border-color:rgba(91,141,239,0.2);color:var(--blue);}
+
+/* ── CALENDAR PANE ── */
+.cal{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;}
+
+/* filter bar — compact single row */
+.fbar{padding:10px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:18px;flex-shrink:0;background:var(--s1);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+.fbar::-webkit-scrollbar{display:none;}
+.fgroup{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.flbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.pills{display:flex;gap:3px;}
+.pill{padding:4px 10px;border-radius:99px;font-size:10.5px;font-weight:600;background:transparent;border:1px solid var(--b2);color:var(--tx2);cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .12s;white-space:nowrap;}
+.pill:hover{border-color:var(--b3);color:var(--tx);}
+.pill.on{background:var(--gold3);border-color:var(--gold4);color:var(--gold2);}
+.fdiv{width:1px;height:20px;background:var(--b2);flex-shrink:0;}
+
+/* cal nav */
+.cal-nav{padding:12px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.cal-title{display:flex;flex-direction:column;gap:2px;}
+.cal-title h1{font-size:14px;font-weight:800;letter-spacing:-0.4px;}
+.cal-title p{font-size:10.5px;color:var(--tx2);}
+.wnav{display:flex;align-items:center;gap:5px;}
+.wbtn{width:28px;height:28px;background:var(--s2);border:1px solid var(--b2);color:var(--tx2);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;}
+.wbtn:hover{border-color:var(--gold);color:var(--gold);}
+.wlbl{padding:5px 12px;background:var(--s2);border:1px solid var(--b2);border-radius:6px;font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+
+/* calendar scroll */
+.cal-scroll{flex:0 0 auto;overflow:visible;padding:10px 14px 0;-webkit-overflow-scrolling:touch;}
+.cgrid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:10px;width:100%;align-items:start;padding-bottom:10px;}
+.dcol{display:flex;flex-direction:column;gap:8px;min-width:0;}
+.dh{text-align:center;padding:6px 2px 10px;}
+.dn{font-size:8.5px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;}
+.dd{font-size:18px;font-weight:800;letter-spacing:-1px;color:var(--tx2);line-height:1;}
+.dcol.today .dd{color:var(--gold2);}
+.dcol.today .dn{color:var(--gold);}
+
+/* slot card */
+.slot{border-radius:7px;padding:10px 9px;cursor:pointer;transition:all .15s;border:1px solid var(--b1);background:var(--s2);position:relative;overflow:hidden;word-break:break-word;}
+.slot::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--b2);transition:background .15s;}
+.slot:hover{border-color:var(--b2);background:var(--s3);transform:translateY(-1px);}
+.slot.sel{border-color:var(--gold);background:var(--gold3);}
+.slot.sel::before{background:var(--gold);}
+.slot.sel::after{content:'✓';position:absolute;top:6px;right:7px;font-size:9px;color:var(--gold);font-weight:800;}
+.slot.full{opacity:0.35;cursor:not-allowed;}
+.slot.full:hover{transform:none;background:var(--s2);border-color:var(--b1);}
+.slot.hidden{display:none;}
+.scat{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;padding:2px 6px;border-radius:3px;display:inline-block;margin-bottom:5px;}
+.scat.mp{background:rgba(232,184,75,0.15);color:var(--gold2);}
+.scat.pa{background:rgba(91,141,239,0.15);color:var(--blue);}
+.scat.cr{background:rgba(77,184,122,0.12);color:var(--green);}
+.scat.ps{background:rgba(224,160,85,0.12);color:#e8a855;}
+.stime{font-size:14px;font-weight:800;letter-spacing:-0.6px;color:var(--tx);font-family:'JetBrains Mono',monospace;margin-bottom:3px;}
+.sel .stime{color:var(--gold2);}
+.slbl{font-size:9.5px;font-weight:600;color:var(--tx2);line-height:1.3;margin-bottom:4px;}
+.sstatus{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--tx3);}
+.sstatus.low{color:var(--red);}
+.sstatus.ok{color:var(--green);}
+.slvl{font-size:8px;color:var(--tx3);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+
+/* empty */
+.empty{display:none;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;color:var(--tx3);text-align:center;gap:8px;font-size:11px;}
+.empty.show{display:flex;}
+.empty-icon{font-size:24px;margin-bottom:4px;}
+
+/* ── BOTTOM BAR ── */
+.bbar{border-top:1px solid var(--b1);background:var(--s1);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-shrink:0;}
+.bbar-l{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.bbar-l h3{font-size:13px;font-weight:700;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bbar-l p{font-size:11px;color:var(--tx2);}
+.bbar-r{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.book-hint{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
+.btn-book{padding:10px 22px;background:var(--gold);color:#0d0d0d;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .2s;white-space:nowrap;}
+.btn-book:hover{background:var(--gold2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(232,184,75,0.3);}
+.btn-book:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+
+/* ── MODALS ── */
+.ov{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);align-items:center;justify-content:center;}
+.ov.show{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:14px;padding:24px;width:90%;max-width:370px;animation:mfade .2s ease;position:relative;}
+@keyframes mfade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.mx{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:6px;background:var(--s2);border:1px solid var(--b1);color:var(--tx3);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.mx:hover{color:var(--tx);border-color:var(--b2);}
+.modal h2{font-size:16px;font-weight:800;letter-spacing:-0.4px;margin-bottom:5px;}
+.modal>p{font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:14px;}
+.perks{list-style:none;background:var(--s2);border:1px solid var(--b1);border-radius:9px;padding:9px 12px;margin-bottom:14px;}
+.perks li{font-size:11px;color:var(--tx2);padding:4px 0;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:7px;}
+.perks li:last-child{border-bottom:none;}
+.pd{width:4px;height:4px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+.btn-dc{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--disc);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .2s;}
+.btn-dc:hover{background:#4752c4;}
+.btn-dc svg{width:15px;height:15px;}
+.mfine{text-align:center;font-size:9.5px;color:var(--tx3);margin-top:8px;font-family:'JetBrains Mono',monospace;}
+.sico{font-size:40px;text-align:center;margin-bottom:10px;animation:pop .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.scard{background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:9px 12px;margin:8px 0 14px;}
+.scard .sl{font-size:8.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:2px;letter-spacing:.4px;text-transform:uppercase;}
+.scard .sv{font-size:13px;font-weight:700;color:var(--gold2);}
+.btn-ok{width:100%;padding:10px;border-radius:8px;background:var(--s3);border:1px solid var(--b2);color:var(--tx);font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.btn-ok:hover{border-color:var(--gold);color:var(--gold);}
+/* ── HERO SECTION ── */
+.hero{display:flex;flex-shrink:0;border-bottom:1px solid var(--b1);overflow:hidden;flex:0 0 auto;max-height:260px;}
+.hero-left{flex:1.15;min-width:0;padding:40px 44px 40px 36px;background:linear-gradient(135deg,#111 0%,#0d0d0d 50%,#181408 100%);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:18px;}
+.hero-left::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 85% 50%,rgba(232,184,75,0.10) 0%,transparent 70%);pointer-events:none;}
+.hero-left::after{content:'';position:absolute;bottom:-60px;right:-40px;width:220px;height:220px;border-radius:50%;background:rgba(232,184,75,0.04);pointer-events:none;}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);font-size:10px;font-weight:700;padding:4px 11px;border-radius:99px;width:fit-content;}
+.hero-h1{font-size:clamp(32px,3.5vw,48px);font-weight:900;line-height:1.05;letter-spacing:-2px;color:var(--tx);}
+.hero-h1 span{color:var(--gold2);}
+.hero-desc{font-size:13px;color:var(--tx2);line-height:1.65;max-width:400px;}
+.hero-right{width:370px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--b1);}
+.hcard{flex:1;padding:22px 24px;display:flex;flex-direction:column;gap:9px;background:var(--s1);}
+.hcard:first-child{border-bottom:1px solid var(--b1);}
+.hcard-label{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
+.hcard-title{font-size:16px;font-weight:800;letter-spacing:-0.4px;line-height:1.2;}
+.hcard-body{font-size:11.5px;color:var(--tx2);line-height:1.6;flex:1;}
+.hcard-meta{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--tx2);}
+.hcard-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2s ease-in-out infinite;}
+.btn-hcard-gold{display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:#0d0d0d;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;width:fit-content;}
+.btn-hcard-gold:hover{background:var(--gold2);transform:translateY(-1px);}
+.btn-hcard-gold svg{width:13px;height:13px;}
+.btn-hcard-outline{display:inline-flex;align-items:center;gap:6px;background:var(--s3);color:var(--tx);border:1px solid var(--b2);padding:7px 15px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;width:fit-content;}
+.btn-hcard-outline:hover{border-color:var(--gold);color:var(--gold);}
+</style>
+</head>
+<body>
+
+<!-- SVG sprite: reusable icons -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden;" focusable="false">
+  <symbol id="icon-discord" viewBox="0 0 24 24">
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+  </symbol>
+  <symbol id="icon-book" viewBox="0 0 24 24">
+    <path d="M3 6a2 2 0 0 1 2-2h12v14H5a2 2 0 0 1-2-2V6zM7 4v12h10V4H7z" />
+    <path d="M9 8h6v1H9z" opacity="0.9"/>
+  </symbol>
+  <symbol id="icon-target" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="4" fill="currentColor"/>
+    <path d="M12 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="icon-users" viewBox="0 0 24 24">
+    <path d="M16 11a3 3 0 1 0-6 0" fill="none" stroke="currentColor" stroke-width="1.2"/>
+    <path d="M6 18a4 4 0 0 1 8 0" fill="none" stroke="currentColor" stroke-width="1.2"/>
+    <circle cx="17" cy="8" r="2" fill="currentColor"/>
+  </symbol>
+  <symbol id="icon-clock" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <path d="M12 7v6l4 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<!-- 1. TICKER -->
+<div class="ticker"><div class="ticker-track" id="ttrack"></div></div>
+
+<!-- 2. HEADER -->
+<header>
+  <a href="#" class="logo">
+    <div class="lm">K</div>
+    <div class="logo-text">
+      <span class="logo-main">TradingWithKyo</span>
+      <span class="logo-sub">Schedule Hub</span>
+    </div>
+  </a>
+  <nav>
+    <a href="#" class="act">Lịch học</a>
+    <a href="#">Khóa học</a>
+    <a href="#">Cộng đồng</a>
+    <a href="#">Về Kyo</a>
+  </nav>
+    <div class="hdr-r">
+    <div class="uchip" id="uChip"><div class="uav" id="uAv">K</div><span id="uName">Kyo</span></div>
+    <button class="btn-login" id="loginBtn">
+      <svg class="icon-discord" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><use href="#icon-discord"/></svg>
+      Đăng nhập Discord
+    </button>
+  </div>
+</header>
+
+
+<!-- 3. HERO SECTION -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-badge">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Discord Learning Schedule
+    </div>
+    <div class="hero-h1">Chọn lịch học<br><span>Trading phù hợp</span></div>
+    <div class="hero-desc">Đăng nhập Discord, chọn khung giờ học bạn mong muốn và giữ slot cho các buổi học Market Profile, Price Action, Crypto và tư duy giao dịch nghiêm túc.</div>
+  </div>
+  <div class="hero-right">
+    <div class="hcard">
+      <div class="hcard-label">Bước 1</div>
+      <div class="hcard-title">Login Discord để giữ slot</div>
+      <div class="hcard-body">Tài khoản Discord giúp xác nhận học viên, chống đặt lịch trùng và có thể gắn role lớp học sau này.</div>
+      <button class="btn-hcard-gold"><svg class="icon-discord" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><use href="#icon-discord"/></svg> Kết nối Discord</button>
+    </div>
+    <!-- Removed duplicate 'Buổi gần nhất' card (now shown in top-strip next-bar) -->
+  </div>
+</div>
+
+<!-- 4. STATS STRIP -->
+<div class="top-strip">
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-book"/></svg></div>
+      <div><div class="stat-n">18</div><div class="stat-l">Buổi đang mở</div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-target"/></svg></div>
+      <div><div class="stat-n">126</div><div class="stat-l">Slot trống</div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-users"/></svg></div>
+      <div><div class="stat-n">2K+</div><div class="stat-l">Thành viên</div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-clock"/></svg></div>
+      <div><div class="stat-n">22h</div><div class="stat-l">Khung giờ chính</div></div>
+    </div>
+  </div>
+  <div class="next-bar">
+    <div class="pulse"></div>
+    <span class="next-badge">Buổi gần nhất</span>
+    <div class="next-info">
+      <span class="next-title">Market Profile Foundation</span>
+      <span class="next-meta">Thứ 4 · 22:00 · Còn 14 slot</span>
+    </div>
+    <div class="next-cd" id="cd">--:--:--</div>
+    <button class="btn-jump">Chọn buổi này →</button>
+  </div>
+</div>
+
+<!-- 5. MAIN CONTENT -->
+<div class="main">
+
+  <!-- Sidebar: course list -->
+  <aside class="sb">
+    <div class="sb-head">
+      <h2>Khóa học</h2>
+      <button class="sb-sort" id="sortBtn">Mới nhất trước</button>
+    </div>
+    <div class="sb-list" id="sbList"></div>
+  </aside>
+
+  <!-- Calendar pane -->
+  <div class="cal">
+
+    <!-- Filter bar — single compact row -->
+    <div class="fbar">
+      <div class="fgroup">
+        <span class="flbl">Chủ đề</span>
+        <div class="pills" id="fTopic">
+          <button class="pill on" data-type="topic" data-value="all">Tất cả</button>
+          <button class="pill" data-type="topic" data-value="mp">Market Profile</button>
+          <button class="pill" data-type="topic" data-value="pa">Price Action</button>
+          <button class="pill" data-type="topic" data-value="cr">Crypto</button>
+          <button class="pill" data-type="topic" data-value="ps">Tâm lý</button>
+        </div>
+      </div>
+      <div class="fdiv"></div>
+      <div class="fgroup">
+        <span class="flbl">Level</span>
+        <div class="pills" id="fLevel">
+          <button class="pill on" data-type="level" data-value="all">Tất cả</button>
+          <button class="pill" data-type="level" data-value="beginner">Beginner</button>
+          <button class="pill" data-type="level" data-value="intermediate">Intermediate</button>
+          <button class="pill" data-type="level" data-value="advanced">Advanced</button>
+        </div>
+      </div>
+      <div class="fdiv"></div>
+      <div class="fgroup">
+        <span class="flbl">Giờ học</span>
+        <div class="pills" id="fTime">
+          <button class="pill on" data-type="time" data-value="all">Tất cả</button>
+          <button class="pill" data-type="time" data-value="20:00">20:00</button>
+          <button class="pill" data-type="time" data-value="21:00">21:00</button>
+          <button class="pill" data-type="time" data-value="22:00">22:00</button>
+          <button class="pill" data-type="time" data-value="after">Sau livestream</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar header with week nav -->
+    <div class="cal-nav">
+      <div class="cal-title">
+        <h1>Lịch học tuần này</h1>
+        <p>Click vào khung giờ để chọn ca học.</p>
+      </div>
+      <div class="wnav">
+        <button class="wbtn" id="wprev">‹</button>
+        <div class="wlbl" id="wlbl"></div>
+        <button class="wbtn" id="wnext">›</button>
+      </div>
+    </div>
+
+    <!-- Calendar grid -->
+    <div class="cal-scroll">
+      <div class="cgrid" id="cgrid"></div>
+      <div class="empty" id="empty">
+        <div class="empty-icon">🔍</div>
+        <div>Không có buổi học nào khớp với bộ lọc.<br>Thử thay đổi chủ đề, level hoặc khung giờ.</div>
+      </div>
+    </div>
+
+    <!-- Bottom booking bar -->
+    <div class="bbar">
+      <div class="bbar-l">
+        <h3 id="bTitle">Chưa chọn lịch</h3>
+          <p id="bSub">Click vào khung giờ trên lịch để chọn ca học.</p>
+      </div>
+      <div class="bbar-r">
+        <button class="btn-book" id="bookBtn" disabled>Giữ slot học này</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Login -->
+  <div class="ov" id="loginOv" onclick="if(event.target===this)closeLogin()">
+  <div class="modal">
+    <button class="mx">✕</button>
+    <h2>Login Discord để giữ slot</h2>
+    <p>Tài khoản Discord giúp xác nhận học viên và có thể gắn role lớp học sau này.</p>
+    <ul class="perks">
+      <li><span class="pd"></span>Truy cập Discord server riêng của học viên</li>
+      <li><span class="pd"></span>Nhận nhắc lịch học tự động qua Discord DM</li>
+      <li><span class="pd"></span>Lưu lịch sử đặt chỗ & tài liệu khóa học</li>
+      <li><span class="pd"></span>Chat trực tiếp với Kyo và cộng đồng trader</li>
+    </ul>
+    <button class="btn-dc">
+      <svg class="icon-discord" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><use href="#icon-discord"/></svg>
+      Kết nối Discord
+    </button>
+    <div class="mfine">🔒 Chỉ đọc tên & avatar Discord của bạn</div>
+  </div>
+</div>
+
+<!-- Modal: Success -->
+  <div class="ov" id="succOv" onclick="if(event.target===this)closeSucc()">
+  <div class="modal" style="text-align:center">
+    <div class="sico">🎉</div>
+    <h2>Đặt lịch thành công!</h2>
+    <p>Kyo sẽ liên hệ qua Discord trong vòng 24h. Kiểm tra DM nhé!</p>
+    <div class="scard"><div class="sl">Khóa học đã đăng ký</div><div class="sv" id="sucTitle">—</div></div>
+    <button class="btn-ok">Hoàn tất 🚀</button>
+  </div>
+</div>
+
+<script>
+const TDATA=[
+  {s:'BTC/USDT',p:'67,420.50',c:'+2.34%',u:1},{s:'ETH/USDT',p:'3,512.80',c:'+1.87%',u:1},
+  {s:'SOL/USDT',p:'172.45',c:'-0.62%',u:0},{s:'BNB/USDT',p:'598.20',c:'+0.91%',u:1},
+  {s:'XRP/USDT',p:'0.5843',c:'-1.23%',u:0},{s:'DOGE/USDT',p:'0.1521',c:'+3.10%',u:1},
+  {s:'ADA/USDT',p:'0.4812',c:'-0.45%',u:0},{s:'AVAX/USDT',p:'38.72',c:'+1.55%',u:1},
+  {s:'DOT/USDT',p:'7.34',c:'-0.88%',u:0},{s:'MATIC/USDT',p:'0.912',c:'+0.72%',u:1},
+  {s:'LINK/USDT',p:'18.45',c:'+2.01%',u:1},{s:'VN-INDEX',p:'1,287.45',c:'+0.43%',u:1},
+  {s:'USD/VND',p:'25,180',c:'+0.02%',u:1},{s:'GOLD/USD',p:'2,312.40',c:'-0.28%',u:0},
+];
+document.getElementById('ttrack').innerHTML=[...TDATA,...TDATA].map(x=>`<div class="ti"><span class="ti-dot ${x.u?'u':'d'}"></span><span class="ti-s">${x.s}</span><span class="ti-p">${x.p}</span><span class="ti-c ${x.u?'u':'d'}">${x.c}</span></div>`).join('');
+
+let NEXT_TARGET = null;
+function updateCd(){
+  const cdEl = document.getElementById('cd');
+  if(!NEXT_TARGET){ if(cdEl) cdEl.textContent='--:--:--'; return; }
+  const now = new Date();
+  const diff = NEXT_TARGET - now;
+  if(diff <= 0){ if(cdEl) cdEl.textContent='Đang diễn ra!'; return; }
+  const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+  if(cdEl) cdEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+setInterval(updateCd,1000);
+
+const COURSES=[
+  {id:'mkt',name:'Market Profile Foundation',level:'Beginner',topic:'mp',used:6,total:20,sessions:[{day:3,time:'22:00',label:'Market Profile Foundation'}]},
+  {id:'ctp',name:'Crypto Trading Plan',level:'Intermediate',topic:'cr',used:10,total:15,sessions:[{day:4,time:'23:00',label:'Crypto Trading Plan'}]},
+  {id:'trap',name:'Price Action: Trap & Liquidity',level:'Advanced',topic:'pa',used:9,total:12,sessions:[{day:5,time:'22:00',label:'Trap & Liquidity'}]},
+  {id:'psy',name:'Tâm lý giao dịch & kỷ luật',level:'All levels',topic:'ps',used:18,total:30,sessions:[{day:7,time:'21:00',label:'Tâm lý giao dịch'}]},
+  {id:'warmup',name:'Market Warmup Daily',level:'Beginner',topic:'mp',used:0,total:14,sessions:[{day:1,time:'21:00',label:'Market Warmup'}]},
+  {id:'qa',name:'Beginner Q&A Session',level:'Beginner',topic:'mp',used:8,total:8,sessions:[{day:2,time:'20:00',label:'Beginner Q&A'},{day:2,time:'22:00',label:'Live Review',forceFull:true}]},
+  {id:'chart',name:'Chart Review Room',level:'Intermediate',topic:'pa',used:3,total:12,sessions:[{day:6,time:'21:00',label:'Chart Review Room'}]},
+  {id:'after',name:'After Live Review',level:'All levels',topic:'pa',used:0,total:12,sessions:[{day:5,time:'00:30',label:'After Live Review'}]},
+];
+const SLOTS=[];
+COURSES.forEach(c=>c.sessions.forEach(s=>{
+  const left=Math.max(0,c.total-c.used);
+  SLOTS.push({courseId:c.id,courseName:c.name,day:s.day,time:s.time,label:s.label,full:s.forceFull||(c.used>=c.total),left,total:c.total,topic:c.topic,level:c.level});
+}));
+
+const DAYS=['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
+const BASE=[19,20,21,22,23,24,25];
+const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const TL={mp:'Market Profile',pa:'Price Action',cr:'Crypto',ps:'Tâm lý'};
+const LS={'Beginner':'BEG','Intermediate':'INT','Advanced':'ADV','All levels':'ALL'};
+
+let loggedIn=false,sel=null,weekOff=0,pendingBook=false,newest=true;
+let filters={topic:'all',level:'all',time:'all'};
+
+function setF(type,val,btn){
+  filters[type]=val;
+  btn.parentElement.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  render();
+}
+function matchF(s){
+  if(filters.topic!=='all'&&s.topic!==filters.topic)return false;
+  if(filters.level!=='all'){
+    const lv=s.level.toLowerCase();
+    if(filters.level==='beginner'&&!lv.includes('beginner')&&!lv.includes('all'))return false;
+    if(filters.level==='intermediate'&&!lv.includes('intermediate')&&!lv.includes('all'))return false;
+    if(filters.level==='advanced'&&!lv.includes('advanced')&&!lv.includes('all'))return false;
+  }
+  if(filters.time!=='all'){
+    if(filters.time==='after'){const h=parseInt(s.time);if(!(h<6||h===0))return false;}
+    else if(s.time!==filters.time)return false;
+  }
+  return true;
+}
+function wkStr(off){
+  const now=new Date();
+  const d=(now.getDay()+6)%7; // days since Monday
+  const st=new Date(now);
+  st.setDate(st.getDate()-d + off*7);
+  const en=new Date(st); en.setDate(st.getDate()+6);
+  return `${st.getDate()} — ${en.getDate()} ${MO[en.getMonth()]} ${en.getFullYear()}`;
+}
+function chgWeek(d){weekOff+=d;document.getElementById('wlbl').textContent=wkStr(weekOff);sel=null;updateBar();render();}
+function render(){renderSb();renderGrid();}
+
+function findNextSession(){
+  const now=new Date();
+  let best=null, bestDiff=Number.POSITIVE_INFINITY;
+  SLOTS.forEach(s=>{
+    if(s.full) return;
+    const parts = s.time.split(':');
+    const hh = parseInt(parts[0],10)||0; const mm = parseInt(parts[1],10)||0;
+    const targetDayJS = (s.day===7)?0:s.day; // 1..6 -> Mon..Sat, 7->Sun(0)
+    const cand = new Date(now);
+    const delta = (targetDayJS - cand.getDay() + 7) % 7;
+    cand.setDate(cand.getDate() + delta);
+    cand.setHours(hh, mm, 0, 0);
+    if(cand <= now) cand.setDate(cand.getDate()+7);
+    const diff = cand - now;
+    if(diff < bestDiff){ bestDiff = diff; best = {slot: s, date: cand}; }
+  });
+  if(best){
+    NEXT_TARGET = best.date;
+    const titleEl = document.querySelector('.next-title');
+    const metaEl = document.querySelector('.next-meta');
+    if(titleEl) titleEl.textContent = best.slot.courseName;
+    if(metaEl) metaEl.textContent = `${DAYS[best.slot.day-1]} · ${best.slot.time} · Còn ${best.slot.left} slot`;
+  } else {
+    NEXT_TARGET = null;
+    const titleEl = document.querySelector('.next-title');
+    const metaEl = document.querySelector('.next-meta');
+    if(titleEl) titleEl.textContent = '—';
+    if(metaEl) metaEl.textContent = 'Không có buổi sắp tới';
+  }
+  updateCd();
+}
+
+function renderSb(){
+  const sorted=[...COURSES].sort((a,b)=>newest?b.used-a.used:a.used-b.used);
+  const f=sorted.filter(c=>SLOTS.filter(s=>s.courseId===c.id).some(matchF));
+  if(!f.length){document.getElementById('sbList').innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:11px;">Không có kết quả</div>';return;}
+  document.getElementById('sbList').innerHTML=f.map(c=>{
+    const left=c.total-c.used,full=left<=0;
+    const isSel=sel&&sel.courseId===c.id;
+    return`<div class="cc${isSel?' sel':''}" data-course-id="${c.id}">
+      <div class="cc-name">${c.name}</div>
+      <div class="cc-tags">
+        ${c.sessions.map(s=>`<span class="tg">${s.day===7?'CN':'T'+(s.day+1)} · ${s.time}</span>`).join('')}
+        <span class="tg bl">${TL[c.topic]||''}</span>
+        <span class="tg">${c.level}</span>
+        <span class="tg ${full?'r':'gr'}">${full?'Đã đầy':`${c.used}/${c.total}`}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderGrid(){
+  let any=false;
+  // compute start of week (Monday) based on current date + weekOff
+  const now=new Date(); const daysSinceMon=(now.getDay()+6)%7;
+  const startOfWeek=new Date(now); startOfWeek.setDate(startOfWeek.getDate()-daysSinceMon + weekOff*7);
+  document.getElementById('cgrid').innerHTML=DAYS.map((dn,i)=>{
+    const dayNum=i+1;
+    const dateObj=new Date(startOfWeek); dateObj.setDate(startOfWeek.getDate()+i);
+    const date=dateObj.getDate();
+    const isToday = (i=== ( (new Date()).getDay()+6)%7 ) && weekOff===0;
+    const slots=SLOTS.filter(s=>s.day===dayNum);
+    const sh=slots.map(s=>{
+      const isSel=sel&&sel.courseId===s.courseId&&sel.day===s.day&&sel.time===s.time;
+      const ok=matchF(s);if(ok)any=true;
+      const cls='slot'+(s.full?' full':isSel?' sel':'')+(ok?'':' hidden');
+      const ssCls=s.full?'sstatus':'sstatus '+(s.left<=3?'low':'ok');
+      return`<div class="${cls}" data-course-id="${s.courseId}" data-day="${s.day}" data-time="${s.time}" ${s.full||!ok?'data-disabled="1"':''}>
+        <span class="scat ${s.topic}">${TL[s.topic]||''}</span>
+        <div class="stime">${s.time}</div>
+        <div class="slbl">${s.label}</div>
+        <div class="${ssCls}">${s.full?'Đã đầy':`Còn ${s.left}`}</div>
+        <div class="slvl">${LS[s.level]||s.level}</div>
+      </div>`;
+    }).join('');
+    return`<div class="dcol${isToday?' today':''}">
+      <div class="dh"><div class="dn">${dn}</div><div class="dd">${date}</div></div>
+      ${sh}
+    </div>`;
+  }).join('');
+  document.getElementById('empty').classList.toggle('show',!any);
+}
+
+function selCourse(id){
+  const s=SLOTS.find(s=>s.courseId===id&&!s.full);if(!s)return;
+  sel=(sel&&sel.courseId===id)?null:{courseId:id,day:s.day,time:s.time};
+  updateBar();render();
+}
+function selSlot(cid,day,time){
+  sel=(sel&&sel.courseId===cid&&sel.day===day&&sel.time===time)?null:{courseId:cid,day,time};
+  updateBar();render();
+}
+function toggleSort(){newest=!newest;document.getElementById('sortBtn').textContent=newest?'Mới nhất trước':'Ít slot trước';renderSb();}
+function updateBar(){
+  const t=document.getElementById('bTitle'),s=document.getElementById('bSub'),b=document.getElementById('bookBtn');
+  if(!sel){t.textContent='Chưa chọn lịch';s.textContent='Click vào khung giờ trên lịch để chọn ca học.';b.disabled=true;findNextSession();return;}
+  const c=COURSES.find(c=>c.id===sel.courseId);
+  t.textContent=c.name;
+  s.textContent=`Thứ ${sel.day===7?'Chủ nhật':sel.day+1} · ${sel.time} · ${loggedIn?'Sẵn sàng đặt lịch':'Login Discord để giữ slot'}`;
+  b.disabled=false;
+  // link top-strip to selected slot
+  const parts = sel.time.split(':'); const hh = parseInt(parts[0],10)||0; const mm = parseInt(parts[1],10)||0;
+  const now = new Date();
+  const targetDayJS = (sel.day===7)?0:sel.day;
+  const cand = new Date(now);
+  const delta = (targetDayJS - cand.getDay() + 7) % 7;
+  cand.setDate(cand.getDate() + delta);
+  cand.setHours(hh, mm, 0, 0);
+  if(cand <= now) cand.setDate(cand.getDate()+7);
+  NEXT_TARGET = cand;
+  const titleEl = document.querySelector('.next-title');
+  const metaEl = document.querySelector('.next-meta');
+  if(titleEl) titleEl.textContent = c.name;
+  if(metaEl) metaEl.textContent = `${DAYS[sel.day-1]} · ${sel.time} · Chọn buổi`;
+  updateCd();
+}
+
+function jumpToNext(){
+  weekOff=0;document.getElementById('wlbl').textContent=wkStr(0);
+  sel={courseId:'mkt',day:3,time:'22:00'};
+  updateBar();render();
+  setTimeout(()=>{const g=document.querySelector('.cal-scroll');if(g)g.scrollLeft=g.scrollWidth/7*2;},80);
+}
+function handleBook(){if(!loggedIn){pendingBook=true;openLogin();}else doBook();}
+function doBook(){
+  document.getElementById('sucTitle').textContent=COURSES.find(c=>c.id===sel.courseId).name;
+  document.getElementById('succOv').classList.add('show');
+}
+function openLogin(){document.getElementById('loginOv').classList.add('show');}
+function closeLogin(){document.getElementById('loginOv').classList.remove('show');}
+function doLogin(){
+  window.location.href = '/auth/discord';
+}
+function closeSucc(){document.getElementById('succOv').classList.remove('show');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLogin();closeSucc();}});
+
+function attachListeners(){
+  const lb=document.getElementById('loginBtn'); if(lb) lb.addEventListener('click',()=>{window.location.href='/auth/discord'});
+  document.querySelectorAll('.btn-hcard-gold').forEach(b=>b.addEventListener('click',()=>{window.location.href='/auth/discord'}));
+  document.querySelectorAll('.btn-hcard-outline').forEach(b=>b.addEventListener('click',jumpToNext));
+  document.querySelectorAll('.btn-jump').forEach(b=>b.addEventListener('click',jumpToNext));
+  const sort=document.getElementById('sortBtn'); if(sort) sort.addEventListener('click',toggleSort);
+  const wp=document.getElementById('wprev'); if(wp) wp.addEventListener('click',()=>chgWeek(-1));
+  const wn=document.getElementById('wnext'); if(wn) wn.addEventListener('click',()=>chgWeek(1));
+  const book=document.getElementById('bookBtn'); if(book) book.addEventListener('click',handleBook);
+  document.querySelectorAll('.mx').forEach(b=>b.addEventListener('click',closeLogin));
+  const dc=document.querySelector('.btn-dc'); if(dc) dc.addEventListener('click',doLogin);
+  const ok=document.querySelector('.btn-ok'); if(ok) ok.addEventListener('click',closeSucc);
+
+  const sb=document.getElementById('sbList'); if(sb) sb.addEventListener('click',e=>{const cc=e.target.closest('.cc'); if(cc) selCourse(cc.dataset.courseId);});
+  const grid=document.getElementById('cgrid'); if(grid) grid.addEventListener('click',e=>{const slot=e.target.closest('.slot'); if(!slot||slot.dataset.disabled)return; selSlot(slot.dataset.courseId,Number(slot.dataset.day),slot.dataset.time);});
+
+  ['fTopic','fLevel','fTime'].forEach(id=>{const el=document.getElementById(id); if(!el) return; el.addEventListener('click',e=>{const p=e.target.closest('.pill'); if(!p) return; const t=p.dataset.type, v=p.dataset.value; setF(t,v,p);});});
+}
+
+document.getElementById('wlbl').textContent=wkStr(0);
+attachListeners();
+// try to load current user from server
+async function loadUser(){
+  try{
+    const res = await fetch('/me');
+    if(!res.ok) return; const data = await res.json();
+    if(data && data.loggedIn){
+      loggedIn = true;
+      const u = data.user;
+      const name = u.username + (u.discriminator ? ('#'+u.discriminator) : '');
+      document.getElementById('uChip').classList.add('show');
+      document.getElementById('uName').textContent = name;
+      document.getElementById('uAv').textContent = (u.username||'U')[0];
+      const lb = document.getElementById('loginBtn'); if(lb) lb.style.display='none';
+    }
+  }catch(e){}
+  updateBar();
+}
+loadUser();
+findNextSession();
+render();
+</script>
+</body>
+</html>
