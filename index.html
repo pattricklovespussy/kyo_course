@@ -251,6 +251,15 @@ nav a.act{color:var(--tx);background:var(--b2);}
 .hero-stat::before{content:'';position:absolute;inset:-40% -20%;background:radial-gradient(circle at 50% 45%,rgba(245,207,122,0.24),transparent 58%);opacity:.55;animation:statGlow 4s ease-in-out infinite;pointer-events:none;}
 @keyframes statGlow{0%,100%{transform:scale(1);opacity:.45;}50%{transform:scale(1.08);opacity:.72;}}
 .hero-stat-badge{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);padding:4px 9px;border-radius:99px;margin-bottom:10px;position:relative;z-index:1;}
+.hero-stat.auth-mode{cursor:pointer;align-items:center;justify-content:center;text-align:left;min-height:150px;background:linear-gradient(180deg,rgba(88,101,242,0.12),rgba(17,17,17,0.92));}
+.hero-stat.auth-mode .hero-stat-num{font-size:22px;line-height:1.15;max-width:260px;}
+.hero-stat.auth-mode .hero-stat-label{margin-top:0;font-size:14px;}
+.hero-stat.auth-mode .hero-stat-sub{max-width:280px;}
+.hero-stat.auth-mode .hero-stat-progress{display:none;}
+.hero-stat.auth-mode .hero-stat-badge{background:rgba(88,101,242,0.14);border-color:rgba(88,101,242,0.28);color:#cfd6ff;}
+.hero-stat-auth-cta{display:inline-flex;align-items:center;gap:7px;margin-top:14px;padding:10px 16px;border-radius:8px;border:none;background:var(--disc);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;position:relative;z-index:1;}
+.hero-stat-auth-cta:hover{background:#4752c4;transform:translateY(-1px);}
+.hero-stat-auth-cta svg{width:13px;height:13px;}
 .hero-stat-num{font-family:'JetBrains Mono',monospace;font-size:34px;line-height:1;font-weight:800;letter-spacing:-1.5px;color:var(--gold2);position:relative;z-index:1;}
 .hero-stat-label{font-size:13px;font-weight:700;letter-spacing:-0.2px;margin-top:8px;position:relative;z-index:1;}
 .hero-stat-sub{font-size:11.5px;color:var(--tx2);line-height:1.6;margin-top:6px;position:relative;z-index:1;}
@@ -341,11 +350,12 @@ body.login-splash::after{content:'';position:fixed;inset:0;z-index:280;pointer-e
     <div class="hero-desc">Đăng nhập Discord, chọn khung giờ học bạn mong muốn và giữ slot cho các buổi học Market Profile, Price Action, Crypto và tư duy giao dịch nghiêm túc.</div>
   </div>
   <div class="hero-right">
-    <div class="hero-stat" id="bookedStatCard">
+    <div class="hero-stat auth-mode" id="bookedStatCard">
       <div class="hero-stat-badge"><span class="hero-stat-pulse"></span> Discord stats</div>
-      <div class="hero-stat-num" id="bookedCount">0</div>
-      <div class="hero-stat-label">Buổi học đã giữ</div>
-      <div class="hero-stat-sub" id="bookedStatSub">Đăng nhập Discord để đồng bộ slot đã giữ và mở menu profile.</div>
+      <div class="hero-stat-num" id="bookedCount">Đăng nhập Discord để giữ slot và đăng kí</div>
+      <div class="hero-stat-label" id="bookedStatLabel">Chưa có slot nào được giữ</div>
+      <div class="hero-stat-sub" id="bookedStatSub">Bấm vào đây để kết nối Discord, giữ slot học và mở menu profile sau khi đăng nhập.</div>
+      <button class="hero-stat-auth-cta" id="heroAuthBtn"><svg class="icon-discord" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><use href="#icon-discord"/></svg> Kết nối Discord</button>
       <div class="hero-stat-progress"><span id="bookedProgress"></span></div>
     </div>
   </div>
@@ -561,14 +571,21 @@ function loadBookedCount(){
 function renderBookedCount(animated=false){
   const countEl = document.getElementById('bookedCount');
   const subEl = document.getElementById('bookedStatSub');
+  const labelEl = document.getElementById('bookedStatLabel');
   const progressEl = document.getElementById('bookedProgress');
   const card = document.getElementById('bookedStatCard');
   if(countEl) countEl.textContent = String(bookedCount);
+  if(labelEl) labelEl.textContent = loggedIn
+    ? 'Buổi học đã giữ'
+    : 'Chưa có slot nào được giữ';
   if(subEl) subEl.textContent = loggedIn
     ? 'Bạn đã giữ slot thành công. Nhấn vào profile để đăng xuất hoặc mở tuỳ chọn khác.'
-    : 'Đăng nhập Discord để đồng bộ slot đã giữ và mở menu profile.';
+    : 'Bấm vào đây để kết nối Discord, giữ slot học và mở menu profile sau khi đăng nhập.';
   if(progressEl) progressEl.style.width = `${Math.min(bookedCount * 25, 100)}%`;
-  if(animated && card){
+  if(card){
+    card.classList.toggle('auth-mode', !loggedIn);
+  }
+  if(animated && card && loggedIn){
     card.classList.remove('celebrate');
     void card.offsetWidth;
     card.classList.add('celebrate');
@@ -767,6 +784,8 @@ document.addEventListener('click',e=>{
 function attachListeners(){
   const lb=document.getElementById('loginBtn'); if(lb) lb.addEventListener('click',()=>{window.location.href=DISCORD_AUTH_URL});
   document.querySelectorAll('.btn-hcard-gold').forEach(b=>b.addEventListener('click',()=>{window.location.href=DISCORD_AUTH_URL}));
+  const heroAuth=document.getElementById('heroAuthBtn'); if(heroAuth) heroAuth.addEventListener('click',()=>{window.location.href=DISCORD_AUTH_URL});
+  const heroCard=document.getElementById('bookedStatCard'); if(heroCard) heroCard.addEventListener('click',()=>{ if(!loggedIn) window.location.href=DISCORD_AUTH_URL; });
   document.querySelectorAll('.btn-hcard-outline').forEach(b=>b.addEventListener('click',jumpToNext));
   document.querySelectorAll('.btn-jump').forEach(b=>b.addEventListener('click',jumpToNext));
   const sort=document.getElementById('sortBtn'); if(sort) sort.addEventListener('click',toggleSort);
@@ -796,7 +815,7 @@ async function loadUser(){
     if(data && data.loggedIn){
       loggedIn = true;
       const u = data.user;
-      const name = u.username + (u.discriminator ? ('#'+u.discriminator) : '');
+      const name = u.username;
       document.getElementById('profileWrap').classList.add('show');
       document.getElementById('uChip').classList.add('show');
       document.getElementById('uName').textContent = name;
