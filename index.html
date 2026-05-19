@@ -559,6 +559,17 @@ body.login-splash::after{content:'';position:fixed;inset:0;z-index:280;pointer-e
   </div>
 </div>
 
+<!-- Modal: Cancel Success -->
+  <div class="ov" id="cancelOv" onclick="if(event.target===this)closeCancel()">
+  <div class="modal" style="text-align:center">
+    <div class="sico">🗑️</div>
+    <h2>Huỷ buổi học thành công</h2>
+    <p>Buổi học đã được huỷ. Nếu cần, bạn có thể đặt lại khung giờ khác.</p>
+    <div class="scard"><div class="sl">Buổi đã huỷ</div><div class="sv" id="cancelTitle">—</div></div>
+    <button class="btn-ok" id="cancelOkBtn">Hoàn tất</button>
+  </div>
+  </div>
+
 <script>
 const DISCORD_AUTH_URL = '/auth/discord';
 
@@ -980,7 +991,7 @@ function updateBar(){
     const myBooking = getBookedSlot();
     if (loggedIn && myBooking && myBooking.bookingId) {
       b.disabled = false;
-      b.textContent = 'Huỷ chọn';
+      b.textContent = 'Huỷ buổi học';
     } else {
       b.disabled = true;
       b.textContent = 'Đã giữ slot';
@@ -1035,16 +1046,25 @@ function cancelBooking(){
   const userId = encodeURIComponent(currentUser.id);
   fetch(`/api/bookings?id=${id}&userId=${userId}`, { method: 'DELETE' })
     .then(async res=>{
-      if(!res.ok){ const data = await res.json().catch(()=>({})); throw new Error(data.error || 'Không thể huỷ booking'); }
+      const data = await res.json().catch(()=>null);
+      if(!res.ok){ throw new Error((data && data.error) || 'Không thể huỷ booking'); }
+      const deleted = data && data.deleted ? data.deleted : null;
       setBookedSlot(null);
       await refreshMyBookings();
       await loadSchedule();
       renderScheduleAvailability();
       findNextSession();
       render();
-      alert('Huỷ booking thành công');
+      // show cancel modal with course name
+      const title = (deleted && (deleted.courseName || deleted.course_name)) || (bk && bk.courseName) || '—';
+      const el = document.getElementById('cancelTitle'); if(el) el.textContent = title;
+      document.getElementById('cancelOv').classList.add('show');
     })
     .catch(err=>{ alert(err.message || 'Không thể huỷ booking'); });
+}
+
+function closeCancel(){
+  const el = document.getElementById('cancelOv'); if(el) el.classList.remove('show');
 }
 function doBook(){
   if(!sel) return;
@@ -1136,6 +1156,7 @@ function attachListeners(){
   document.querySelectorAll('.mx').forEach(b=>b.addEventListener('click',closeLogin));
   const dc=document.querySelector('.btn-dc'); if(dc) dc.addEventListener('click',doLogin);
   const ok=document.querySelector('.btn-ok'); if(ok) ok.addEventListener('click',closeSucc);
+  const cancelOk=document.getElementById('cancelOkBtn'); if(cancelOk) cancelOk.addEventListener('click',closeCancel);
   const chip=document.getElementById('uChip'); if(chip) chip.addEventListener('click',toggleProfileMenu);
   const logout=document.getElementById('logoutBtn'); if(logout) logout.addEventListener('click',()=>{window.location.href='/logout';});
   const notifySoon=document.getElementById('notifySoonBtn'); if(notifySoon) notifySoon.addEventListener('click',()=>{});
