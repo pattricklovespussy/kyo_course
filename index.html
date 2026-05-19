@@ -61,10 +61,24 @@ nav{display:flex;align-items:center;gap:2px;flex:1;}
 nav a{padding:6px 12px;color:var(--tx2);text-decoration:none;font-size:12px;font-weight:500;border-radius:6px;transition:all .15s;}
 nav a:hover{color:var(--tx);background:var(--b1);}
 nav a.act{color:var(--tx);background:var(--b2);}
-.hdr-r{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.uchip{display:none;align-items:center;gap:6px;padding:5px 12px 5px 5px;background:var(--s2);border:1px solid var(--b2);border-radius:99px;font-size:12px;font-weight:600;}
+.hdr-r{display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;}
+.profile-wrap{position:relative;display:none;}
+.profile-wrap.show{display:block;}
+.uchip{display:flex;align-items:center;gap:6px;padding:5px 12px 5px 5px;background:var(--s2);border:1px solid var(--b2);border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;}
 .uchip.show{display:flex;}
 .uav{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#d4951a);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#0d0d0d;}
+.profile-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:240px;background:var(--s1);border:1px solid var(--b2);border-radius:12px;overflow:hidden;box-shadow:0 18px 36px rgba(0,0,0,0.35);z-index:400;}
+.profile-menu.show{display:block;}
+.profile-meta{padding:14px 14px 12px;border-bottom:1px solid var(--b1);}
+.profile-name{font-size:13px;font-weight:800;letter-spacing:-0.2px;}
+.profile-sub{font-size:10.5px;color:var(--tx2);margin-top:3px;}
+.profile-actions{display:flex;flex-direction:column;padding:8px;gap:6px;}
+.profile-item{width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:8px;border:none;background:transparent;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.profile-item:hover{background:var(--s2);}
+.profile-item.danger:hover{background:rgba(224,96,96,0.12);color:var(--red);}
+.profile-item.disabled{opacity:.6;cursor:not-allowed;}
+.profile-item .pi-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+.profile-item .pi-dot.muted{background:var(--tx3);}
 .btn-login{display:flex;align-items:center;gap:7px;background:var(--disc);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
 .btn-login:hover{background:#4752c4;}
 .btn-login svg{width:13px;height:13px;}
@@ -233,6 +247,20 @@ nav a.act{color:var(--tx);background:var(--b2);}
 .btn-hcard-gold svg{width:13px;height:13px;}
 .btn-hcard-outline{display:inline-flex;align-items:center;gap:6px;background:var(--s3);color:var(--tx);border:1px solid var(--b2);padding:7px 15px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;width:fit-content;}
 .btn-hcard-outline:hover{border-color:var(--gold);color:var(--gold);}
+.hero-stat{flex:1;display:flex;align-items:flex-start;justify-content:center;flex-direction:column;padding:22px 24px;background:linear-gradient(180deg,rgba(232,184,75,0.08),rgba(17,17,17,0.92));position:relative;overflow:hidden;}
+.hero-stat::before{content:'';position:absolute;inset:-40% -20%;background:radial-gradient(circle at 50% 45%,rgba(245,207,122,0.24),transparent 58%);opacity:.55;animation:statGlow 4s ease-in-out infinite;pointer-events:none;}
+@keyframes statGlow{0%,100%{transform:scale(1);opacity:.45;}50%{transform:scale(1.08);opacity:.72;}}
+.hero-stat-badge{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);padding:4px 9px;border-radius:99px;margin-bottom:10px;position:relative;z-index:1;}
+.hero-stat-num{font-family:'JetBrains Mono',monospace;font-size:34px;line-height:1;font-weight:800;letter-spacing:-1.5px;color:var(--gold2);position:relative;z-index:1;}
+.hero-stat-label{font-size:13px;font-weight:700;letter-spacing:-0.2px;margin-top:8px;position:relative;z-index:1;}
+.hero-stat-sub{font-size:11.5px;color:var(--tx2);line-height:1.6;margin-top:6px;position:relative;z-index:1;}
+.hero-stat-progress{width:100%;height:8px;border-radius:99px;background:var(--s3);border:1px solid var(--b1);margin-top:14px;overflow:hidden;position:relative;z-index:1;}
+.hero-stat-progress > span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:inherit;transition:width .45s ease;}
+.hero-stat-pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(77,184,122,0.45);animation:pulse 2s ease-in-out infinite;}
+body.login-splash::after{content:'';position:fixed;inset:0;z-index:280;pointer-events:none;background:radial-gradient(circle at 50% 18%,rgba(245,207,122,0.22),transparent 22%),radial-gradient(circle at 20% 20%,rgba(88,101,242,0.16),transparent 18%),radial-gradient(circle at 80% 18%,rgba(88,101,242,0.16),transparent 18%);animation:loginBurst 1.1s ease-out forwards;}
+@keyframes loginBurst{0%{opacity:0;transform:scale(.98);}12%{opacity:1;}100%{opacity:0;transform:scale(1.03);}}
+.hero-stat.celebrate{animation:cardPop .65s cubic-bezier(.34,1.56,.64,1);}
+@keyframes cardPop{0%{transform:translateY(10px) scale(.96);opacity:.2;}100%{transform:translateY(0) scale(1);opacity:1;}}
 </style>
 </head>
 <body>
@@ -281,7 +309,19 @@ nav a.act{color:var(--tx);background:var(--b2);}
     <a href="#">Về Kyo</a>
   </nav>
     <div class="hdr-r">
-    <div class="uchip" id="uChip"><div class="uav" id="uAv">K</div><span id="uName">Kyo</span></div>
+    <div class="profile-wrap" id="profileWrap">
+      <div class="uchip" id="uChip"><div class="uav" id="uAv">K</div><span id="uName">Kyo</span></div>
+      <div class="profile-menu" id="profileMenu" aria-hidden="true">
+        <div class="profile-meta">
+          <div class="profile-name" id="profileName">Kyo</div>
+          <div class="profile-sub">Tài khoản Discord đã kết nối</div>
+        </div>
+        <div class="profile-actions">
+          <button class="profile-item disabled" type="button" id="notifySoonBtn"><span class="pi-dot muted"></span>Nhận thông báo về buổi học <span style="font-size:10px;color:var(--tx2);font-weight:600;">(Coming soon)</span></button>
+          <button class="profile-item danger" type="button" id="logoutBtn"><span class="pi-dot"></span>Đăng xuất</button>
+        </div>
+      </div>
+    </div>
     <button class="btn-login" id="loginBtn">
       <svg class="icon-discord" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><use href="#icon-discord"/></svg>
       Đăng nhập Discord
@@ -301,13 +341,13 @@ nav a.act{color:var(--tx);background:var(--b2);}
     <div class="hero-desc">Đăng nhập Discord, chọn khung giờ học bạn mong muốn và giữ slot cho các buổi học Market Profile, Price Action, Crypto và tư duy giao dịch nghiêm túc.</div>
   </div>
   <div class="hero-right">
-    <div class="hcard">
-      <div class="hcard-label">Bước 1</div>
-      <div class="hcard-title">Login Discord để giữ slot</div>
-      <div class="hcard-body">Tài khoản Discord giúp xác nhận học viên, chống đặt lịch trùng và có thể gắn role lớp học sau này.</div>
-      <button class="btn-hcard-gold"><svg class="icon-discord" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><use href="#icon-discord"/></svg> Kết nối Discord</button>
+    <div class="hero-stat" id="bookedStatCard">
+      <div class="hero-stat-badge"><span class="hero-stat-pulse"></span> Discord stats</div>
+      <div class="hero-stat-num" id="bookedCount">0</div>
+      <div class="hero-stat-label">Buổi học đã giữ</div>
+      <div class="hero-stat-sub" id="bookedStatSub">Đăng nhập Discord để đồng bộ slot đã giữ và mở menu profile.</div>
+      <div class="hero-stat-progress"><span id="bookedProgress"></span></div>
     </div>
-    <!-- Removed duplicate 'Buổi gần nhất' card (now shown in top-strip next-bar) -->
   </div>
 </div>
 
@@ -510,6 +550,30 @@ const LS={'Beginner':'BEG','Intermediate':'INT','Advanced':'ADV','All levels':'A
 
 let loggedIn=false,sel=null,weekOff=0,pendingBook=false,newest=true;
 let filters={topic:'all',level:'all',time:'all'};
+let profileOpen=false;
+let bookedCount=0;
+
+function loadBookedCount(){
+  const value = Number(localStorage.getItem('kyo_booked_count') || '0');
+  bookedCount = Number.isFinite(value) ? value : 0;
+}
+
+function renderBookedCount(animated=false){
+  const countEl = document.getElementById('bookedCount');
+  const subEl = document.getElementById('bookedStatSub');
+  const progressEl = document.getElementById('bookedProgress');
+  const card = document.getElementById('bookedStatCard');
+  if(countEl) countEl.textContent = String(bookedCount);
+  if(subEl) subEl.textContent = loggedIn
+    ? 'Bạn đã giữ slot thành công. Nhấn vào profile để đăng xuất hoặc mở tuỳ chọn khác.'
+    : 'Đăng nhập Discord để đồng bộ slot đã giữ và mở menu profile.';
+  if(progressEl) progressEl.style.width = `${Math.min(bookedCount * 25, 100)}%`;
+  if(animated && card){
+    card.classList.remove('celebrate');
+    void card.offsetWidth;
+    card.classList.add('celebrate');
+  }
+}
 
 function setF(type,val,btn){
   filters[type]=val;
@@ -669,14 +733,36 @@ function handleBook(){if(!loggedIn){pendingBook=true;openLogin();}else doBook();
 function doBook(){
   document.getElementById('sucTitle').textContent=COURSES.find(c=>c.id===sel.courseId).name;
   document.getElementById('succOv').classList.add('show');
+  bookedCount += 1;
+  localStorage.setItem('kyo_booked_count', String(bookedCount));
+  renderBookedCount(true);
 }
 function openLogin(){document.getElementById('loginOv').classList.add('show');}
 function closeLogin(){document.getElementById('loginOv').classList.remove('show');}
+function closeProfileMenu(){
+  profileOpen=false;
+  const menu=document.getElementById('profileMenu');
+  if(menu) menu.classList.remove('show');
+  if(menu) menu.setAttribute('aria-hidden','true');
+}
+function toggleProfileMenu(){
+  if(!loggedIn) return;
+  profileOpen=!profileOpen;
+  const menu=document.getElementById('profileMenu');
+  if(!menu) return;
+  menu.classList.toggle('show',profileOpen);
+  menu.setAttribute('aria-hidden',profileOpen?'false':'true');
+}
 function doLogin(){
   window.location.href = DISCORD_AUTH_URL;
 }
 function closeSucc(){document.getElementById('succOv').classList.remove('show');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLogin();closeSucc();}});
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('profileWrap');
+  if(!wrap || !profileOpen) return;
+  if(!wrap.contains(e.target)) closeProfileMenu();
+});
 
 function attachListeners(){
   const lb=document.getElementById('loginBtn'); if(lb) lb.addEventListener('click',()=>{window.location.href=DISCORD_AUTH_URL});
@@ -690,6 +776,9 @@ function attachListeners(){
   document.querySelectorAll('.mx').forEach(b=>b.addEventListener('click',closeLogin));
   const dc=document.querySelector('.btn-dc'); if(dc) dc.addEventListener('click',doLogin);
   const ok=document.querySelector('.btn-ok'); if(ok) ok.addEventListener('click',closeSucc);
+  const chip=document.getElementById('uChip'); if(chip) chip.addEventListener('click',toggleProfileMenu);
+  const logout=document.getElementById('logoutBtn'); if(logout) logout.addEventListener('click',()=>{window.location.href='/logout';});
+  const notifySoon=document.getElementById('notifySoonBtn'); if(notifySoon) notifySoon.addEventListener('click',()=>{});
 
   const sb=document.getElementById('sbList'); if(sb) sb.addEventListener('click',e=>{const cc=e.target.closest('.cc'); if(cc) selCourse(cc.dataset.courseId);});
   const grid=document.getElementById('cgrid'); if(grid) grid.addEventListener('click',e=>{const slot=e.target.closest('.slot'); if(!slot||slot.dataset.disabled)return; selSlot(slot.dataset.courseId,Number(slot.dataset.day),slot.dataset.time);});
@@ -708,14 +797,21 @@ async function loadUser(){
       loggedIn = true;
       const u = data.user;
       const name = u.username + (u.discriminator ? ('#'+u.discriminator) : '');
+      document.getElementById('profileWrap').classList.add('show');
       document.getElementById('uChip').classList.add('show');
       document.getElementById('uName').textContent = name;
+      document.getElementById('profileName').textContent = name;
       document.getElementById('uAv').textContent = (u.username||'U')[0];
       const lb = document.getElementById('loginBtn'); if(lb) lb.style.display='none';
+      document.body.classList.add('login-splash');
+      setTimeout(()=>document.body.classList.remove('login-splash'),1200);
+      renderBookedCount(true);
     }
   }catch(e){}
   updateBar();
 }
+loadBookedCount();
+renderBookedCount(false);
 loadUser();
 findNextSession();
 render();
