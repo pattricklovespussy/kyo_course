@@ -49,3 +49,16 @@ POSTGRES_CONNECTION_STRING=postgresql://postgres:password@db.xxx.supabase.co:543
 ---
 
 Xem file `supabase.sql` để tạo bảng và chèn bản ghi khởi tạo.
+
+### Đăng nhập Admin bằng Supabase Auth
+
+`admin.html` đã dùng Supabase Auth để khóa trang quản trị. Frontend chỉ cần public `SUPABASE_URL` và `SUPABASE_ANON_KEY`, không có `service_role` key ở client.
+
+Thiết lập trên Supabase:
+
+1. Vào **Auth → Providers → Email** và bật Email/Password.
+2. Vào **Auth → Settings** và tắt đăng ký công khai nếu bạn chỉ muốn admin được mời vào.
+3. Tạo user admin trong **Auth → Users** bằng cách invite hoặc tạo trực tiếp email/password.
+4. Đăng nhập bằng email/password đó trong `admin.html`.
+
+Nếu bạn muốn giới hạn chỉ một vài email, nên quản lý bằng user invite của Supabase thay vì hardcode danh sách tài khoản trong frontend.

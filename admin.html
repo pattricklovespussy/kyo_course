@@ -174,6 +174,21 @@ body{display:flex;flex-direction:column;min-height:100vh;}
 .btn-del-confirm{padding:10px 20px;background:var(--red);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
 .btn-del-confirm:hover{background:#c84f4f;}
 
+/* ── AUTH GATE ── */
+.auth-gate{position:fixed;inset:0;z-index:999;background:radial-gradient(circle at top, rgba(232,184,75,0.10), transparent 32%), rgba(10,10,10,0.98);display:flex;align-items:center;justify-content:center;padding:18px;}
+.auth-gate.hide{display:none;}
+.auth-card{width:100%;max-width:420px;background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.45);}
+.auth-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:99px;background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;font-family:'JetBrains Mono',monospace;margin-bottom:14px;}
+.auth-card h1{font-size:24px;line-height:1.1;letter-spacing:-0.6px;margin-bottom:8px;}
+.auth-card p{font-size:12.5px;color:var(--tx2);line-height:1.6;margin-bottom:18px;}
+.auth-card .form-row{margin-bottom:14px;}
+.auth-card input{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:13px;padding:11px 12px;outline:none;}
+.auth-card input:focus{border-color:var(--gold);}
+.auth-actions{display:flex;gap:10px;align-items:center;margin-top:10px;}
+.auth-actions .btn-confirm,.auth-actions .btn-cancel{flex:1;justify-content:center;display:inline-flex;align-items:center;}
+.auth-note{margin-top:14px;font-size:11px;line-height:1.6;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
+.auth-note.err{color:var(--red);} 
+
 /* ── PUBLISH TOGGLE ── */
 .pub-toggle{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:9px;margin-bottom:20px;}
 .pub-toggle p{flex:1;font-size:11.5px;color:var(--tx2);line-height:1.5;}
@@ -188,6 +203,32 @@ input:checked + .slider:before{transform:translateX(18px);background:#fff;}
 </style>
 </head>
 <body>
+
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <div class="auth-badge">Supabase Auth</div>
+    <h1>Đăng nhập Admin</h1>
+    <p>Chỉ tài khoản được tạo trong Supabase Auth mới vào được trang quản trị.</p>
+    <div class="form-row">
+      <label>Email</label>
+      <input type="email" id="adminEmail" placeholder="admin@yourdomain.com" autocomplete="email">
+    </div>
+    <div class="form-row">
+      <label>Mật khẩu</label>
+      <input type="password" id="adminPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="auth-actions">
+      <button class="btn-confirm" id="adminLoginBtn" type="button">Đăng nhập</button>
+      <button class="btn-cancel" id="adminLogoutBtn" type="button">Đăng xuất</button>
+    </div>
+    <div class="auth-note" id="authNote">Auth được quản lý hoàn toàn bởi Supabase. Không có danh sách tài khoản tự viết trong frontend.</div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  window.__supabaseCreateClient = createClient;
+</script>
 
 <!-- HEADER -->
 <header class="adm-header">
@@ -450,6 +491,8 @@ input:checked + .slider:before{transform:translateX(18px);background:#fff;}
 
 <script>
 const DB_KEY = 'kyo_admin_db';
+const SUPABASE_URL = 'https://awjpizofhzsxqolbudem.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_1buODaj-vtBp-R1gpzwR4w_EWKNChgo';
 const TOPIC_LABELS = {mp:'Market Profile',pa:'Price Action',cr:'Crypto',ps:'Tâm lý'};
 const TOPIC_CLS = {mp:'mp',pa:'pa',cr:'cr',ps:'ps'};
 const LEVEL_CLS = {Beginner:'beg',Intermediate:'int',Advanced:'adv','All levels':'all'};
@@ -457,8 +500,84 @@ const DAY_LABELS = {1:'Thứ 2',2:'Thứ 3',3:'Thứ 4',4:'Thứ 5',5:'Thứ 6',
 
 // ── DATABASE ──
 let db = {courses:[], sessions:[]};
+let supabaseClient = null;
+let adminAuthed = false;
+
+function setAuthNote(message, isError=false){
+  const note = document.getElementById('authNote');
+  if(!note) return;
+  note.textContent = message;
+  note.classList.toggle('err', Boolean(isError));
+}
+
+function showAuthGate(show=true){
+  const gate = document.getElementById('authGate');
+  if(!gate) return;
+  gate.classList.toggle('hide', !show);
+}
+
+function waitForSupabaseFactory(timeoutMs = 5000){
+  return new Promise((resolve, reject)=>{
+    const started = Date.now();
+    const poll = ()=>{
+      if(window.__supabaseCreateClient) return resolve(window.__supabaseCreateClient);
+      if(Date.now() - started >= timeoutMs) return reject(new Error('Supabase client chưa tải xong'));
+      setTimeout(poll, 50);
+    };
+    poll();
+  });
+}
+
+async function ensureSupabaseClient(){
+  if(supabaseClient) return supabaseClient;
+  const createClient = await waitForSupabaseFactory();
+  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supabaseClient;
+}
+
+async function syncAuthState(session){
+  adminAuthed = Boolean(session?.user);
+  showAuthGate(!adminAuthed);
+  if(adminAuthed){
+    setAuthNote('Đã đăng nhập. Đang tải dữ liệu admin...');
+    await loadDB();
+    updateBadges();
+    renderCourses();
+    setAuthNote('Đăng nhập thành công.');
+  }
+}
+
+async function signInAdmin(){
+  const email = document.getElementById('adminEmail')?.value.trim();
+  const password = document.getElementById('adminPassword')?.value;
+  if(!email || !password){
+    setAuthNote('Vui lòng nhập email và mật khẩu.', true);
+    return;
+  }
+  try{
+    const client = await ensureSupabaseClient();
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    await syncAuthState(data?.session || null);
+  }catch(err){
+    setAuthNote(err?.message || 'Đăng nhập thất bại.', true);
+  }
+}
+
+async function signOutAdmin(){
+  try{
+    const client = await ensureSupabaseClient();
+    await client.auth.signOut();
+  }catch(err){}
+  adminAuthed = false;
+  showAuthGate(true);
+  setAuthNote('Đã đăng xuất.');
+}
 
 function loadDB(){
+  if(!adminAuthed){
+    return Promise.resolve(db);
+  }
   return (async()=>{
     try{
       const cached = localStorage.getItem(DB_KEY);
@@ -492,6 +611,10 @@ function loadDB(){
 }
 
 function saveDB(){
+  if(!adminAuthed){
+    setAuthNote('Vui lòng đăng nhập admin trước khi lưu.', true);
+    return;
+  }
   // Rebuild sessions from courses then merge standalone sessions
   // Sessions in db are derived from course sessions arrays
   rebuildSessions();
@@ -754,6 +877,10 @@ function updateSessionRow(i, key, val){
 }
 
 function saveCourse(){
+  if(!adminAuthed){
+    setAuthNote('Vui lòng đăng nhập admin trước khi chỉnh sửa dữ liệu.', true);
+    return;
+  }
   const name = document.getElementById('c-name').value.trim();
   const id = document.getElementById('c-id').value.trim().toLowerCase().replace(/\s+/g,'_');
   const topic = document.getElementById('c-topic').value;
@@ -809,6 +936,10 @@ function populateCourseSelect(id){
 }
 
 function saveSession(){
+  if(!adminAuthed){
+    setAuthNote('Vui lòng đăng nhập admin trước khi chỉnh sửa dữ liệu.', true);
+    return;
+  }
   const courseId = document.getElementById('s-courseId').value;
   const label = document.getElementById('s-label').value.trim();
   const day = parseInt(document.getElementById('s-day').value);
@@ -880,10 +1011,34 @@ function importData(e){
 }
 
 // ── INIT ──
-loadDB().then(()=>{
-  updateBadges();
-  renderCourses();
+async function initAdminAuth(){
+  try{
+    const client = await ensureSupabaseClient();
+    client.auth.onAuthStateChange(async (_event, session)=>{
+      await syncAuthState(session);
+    });
+    const { data } = await client.auth.getSession();
+    await syncAuthState(data?.session || null);
+  }catch(err){
+    setAuthNote('Không khởi tạo được Supabase Auth. Kiểm tra URL hoặc anon key.', true);
+    showAuthGate(true);
+  }
+}
+
+const loginBtn = document.getElementById('adminLoginBtn');
+if(loginBtn) loginBtn.addEventListener('click', signInAdmin);
+const logoutBtn = document.getElementById('adminLogoutBtn');
+if(logoutBtn) logoutBtn.addEventListener('click', signOutAdmin);
+document.getElementById('adminPassword')?.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') signInAdmin();
 });
+document.getElementById('adminEmail')?.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') signInAdmin();
+});
+
+showAuthGate(true);
+setAuthNote('Đang kiểm tra phiên đăng nhập...');
+initAdminAuth();
 
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){
