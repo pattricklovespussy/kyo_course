@@ -17,6 +17,19 @@ const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 
 let memorySchedule = { courses: [], sessions: [], updatedAt: null };
 
+// Optional: prefer using @supabase/supabase-js on the server if installed
+let supabaseClient = null;
+if(SUPABASE_ENABLED){
+  try{
+    const { createClient } = require('@supabase/supabase-js');
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    console.log('Supabase client initialized (server SDK)');
+  }catch(e){
+    // SDK not installed, we'll use REST fallback already implemented
+    supabaseClient = null;
+  }
+}
+
 if(!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET){
   console.warn('DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not set. Fill .env or env vars.');
 }
@@ -59,6 +72,16 @@ async function supabaseFetch(path, options = {}){
 
 async function readSchedule(){
   if(SUPABASE_ENABLED){
+    if(supabaseClient){
+      const { data, error } = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .select('payload,updated_at')
+        .eq('id', SUPABASE_RECORD_ID)
+        .limit(1)
+        .single();
+      if(error) throw error;
+      return normalizeSchedule(data?.payload || {});
+    }
     const response = await supabaseFetch(
       `${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_RECORD_ID)}&select=payload,updated_at`,
       { method: 'GET', headers: { Accept: 'application/json' } }
@@ -76,6 +99,13 @@ async function readSchedule(){
 async function writeSchedule(payload){
   const normalized = normalizeSchedule(payload);
   if(SUPABASE_ENABLED){
+    if(supabaseClient){
+      const { data, error } = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .upsert({ id: SUPABASE_RECORD_ID, payload: normalized, updated_at: new Date().toISOString() }, { returning: 'minimal' });
+      if(error) throw error;
+      return normalized;
+    }
     const response = await supabaseFetch(`${SUPABASE_TABLE}?on_conflict=id`, {
       method: 'POST',
       headers: {
