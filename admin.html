@@ -503,7 +503,14 @@ input:checked + .slider:before{transform:translateX(18px);background:#fff;}
           </div>
           <div class="modal-body">
             <div style="margin-bottom:8px;color:var(--tx2);">Buổi: <strong id="sb-course-name">—</strong> · <span id="sb-day">—</span> · <span id="sb-time">—</span></div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+              <button class="btn-edit" id="sb-retry">Tải lại</button>
+              <button class="btn-edit" id="sb-show-course">Hiện tất cả đăng ký của khóa</button>
+              <div style="flex:1"></div>
+              <div id="sb-info" style="font-size:12px;color:var(--tx3)"></div>
+            </div>
             <div id="sb-list">Đang tải…</div>
+            <pre id="sb-raw" style="display:none;background:var(--s2);border:1px solid var(--b1);padding:8px;margin-top:8px;color:var(--tx3);font-family:JetBrains Mono,monospace;white-space:pre-wrap;max-height:240px;overflow:auto;"></pre>
           </div>
           <div class="modal-footer">
             <button class="btn-cancel" onclick="closeSessionBookings()">Đóng</button>
@@ -965,21 +972,31 @@ async function openSessionBookings(i){
   listEl.textContent = 'Đang tải…';
   // build params and use URLSearchParams to avoid double-encoding
   const params = { slotKey: `${s.courseId}|${s.day}|${s.time}`, courseId: s.courseId };
+  const rawEl = document.getElementById('sb-raw'); if(rawEl) rawEl.style.display='none';
+  const infoEl = document.getElementById('sb-info'); if(infoEl) infoEl.textContent='';
+  const qs = new URLSearchParams(params).toString();
   try{
-    const qs = new URLSearchParams(params).toString();
     const res = await fetch(`/api/bookings?${qs}`);
+    const text = await res.text().catch(()=>null);
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch(e){ data = null; }
     if(!res.ok){
-      const errBody = await res.text().catch(()=>null);
-      throw new Error(errBody || `HTTP ${res.status}`);
+      listEl.innerHTML = `<div style="color:var(--red)">HTTP ${res.status} — ${text || 'No response'}</div>`;
+      if(rawEl) { rawEl.style.display='block'; rawEl.textContent = text || ''; }
+      return;
     }
-    const data = await res.json();
-    let rows = Array.isArray(data.bookings) ? data.bookings : [];
-    // fallback: if no rows for slotKey, try filter by courseId only
+    let rows = Array.isArray(data?.bookings) ? data.bookings : [];
+    // fallback: if no rows for slotKey, try fetch by courseId only
     if(!rows.length){
       const res2 = await fetch(`/api/bookings?${new URLSearchParams({ courseId: s.courseId }).toString()}`);
-      if(res2.ok){
-        const d2 = await res2.json();
-        rows = Array.isArray(d2.bookings) ? d2.bookings.filter(r=>r.slotKey===`${s.courseId}|${s.day}|${s.time}`) : [];
+      const t2 = await res2.text().catch(()=>null);
+      let d2 = null; try{ d2 = t2 ? JSON.parse(t2) : null; }catch(e){ d2 = null; }
+      if(res2.ok && Array.isArray(d2?.bookings)){
+        rows = d2.bookings.filter(r=>r.slotKey===`${s.courseId}|${s.day}|${s.time}`);
+        if(!rows.length && d2.bookings.length){
+          infoEl.textContent = 'Không tìm thấy theo slotKey; hiển thị tất cả bookings của khóa (lọc client).';
+          rows = d2.bookings;
+        }
       }
     }
     if(!rows.length){
@@ -989,13 +1006,36 @@ async function openSessionBookings(i){
         rows.map(r=>`<tr style="border-top:1px solid var(--b1)"><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.id}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.userId}</td><td style="padding:8px">${r.userName || ''}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.createdAt||''}</td></tr>`).join('') +
         '</tbody></table>';
     }
+    if(rawEl){ rawEl.style.display='block'; rawEl.textContent = JSON.stringify(data, null, 2); }
   }catch(err){
     listEl.innerHTML = `<div style="color:var(--red)">Lỗi tải danh sách: ${err.message}</div>`;
+    if(rawEl) { rawEl.style.display='block'; rawEl.textContent = String(err.stack||err.message||err); }
   }
   document.getElementById('sessionBookingsModal').classList.add('show');
 }
 
 function closeSessionBookings(){ document.getElementById('sessionBookingsModal').classList.remove('show'); }
+
+// hook modal buttons after DOM is ready
+document.addEventListener('click', (e)=>{
+  const target = e.target;
+  if(target && target.id === 'sb-retry'){
+    const hdr = document.getElementById('sb-course-name');
+    const courseName = hdr ? hdr.textContent : null;
+    // find session by matching courseName / courseId and re-open modal
+    // simple approach: close and reopen using sessions find
+    // get displayed course id from sb-course-name (we store id in text when opening)
+    // fallback: reload page
+    window.location.reload();
+  }
+  if(target && target.id === 'sb-show-course'){
+    const courseId = document.getElementById('sb-course-name')?.textContent || '';
+    if(!courseId) return;
+    // find any session with matching courseId and open bookings for that session
+    const idx = db.sessions.findIndex(s=>s.courseId===courseId || s.courseName===courseId);
+    if(idx!==-1) openSessionBookings(idx);
+  }
+});
 
 function closeSessionModal(){
   document.getElementById('sessionModal').classList.remove('show');
