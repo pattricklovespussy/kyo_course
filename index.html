@@ -461,6 +461,8 @@ nav a.act{color:var(--tx);background:var(--b2);}
 </div>
 
 <script>
+const DISCORD_AUTH_URL = '/auth/discord';
+
 const TDATA=[
   {s:'BTC/USDT',p:'67,420.50',c:'+2.34%',u:1},{s:'ETH/USDT',p:'3,512.80',c:'+1.87%',u:1},
   {s:'SOL/USDT',p:'172.45',c:'-0.62%',u:0},{s:'BNB/USDT',p:'598.20',c:'+0.91%',u:1},
@@ -671,14 +673,14 @@ function doBook(){
 function openLogin(){document.getElementById('loginOv').classList.add('show');}
 function closeLogin(){document.getElementById('loginOv').classList.remove('show');}
 function doLogin(){
-  window.location.href = '/auth/discord';
+  window.location.href = DISCORD_AUTH_URL;
 }
 function closeSucc(){document.getElementById('succOv').classList.remove('show');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLogin();closeSucc();}});
 
 function attachListeners(){
-  const lb=document.getElementById('loginBtn'); if(lb) lb.addEventListener('click',()=>{window.location.href='/auth/discord'});
-  document.querySelectorAll('.btn-hcard-gold').forEach(b=>b.addEventListener('click',()=>{window.location.href='/auth/discord'}));
+  const lb=document.getElementById('loginBtn'); if(lb) lb.addEventListener('click',()=>{window.location.href=DISCORD_AUTH_URL});
+  document.querySelectorAll('.btn-hcard-gold').forEach(b=>b.addEventListener('click',()=>{window.location.href=DISCORD_AUTH_URL}));
   document.querySelectorAll('.btn-hcard-outline').forEach(b=>b.addEventListener('click',jumpToNext));
   document.querySelectorAll('.btn-jump').forEach(b=>b.addEventListener('click',jumpToNext));
   const sort=document.getElementById('sortBtn'); if(sort) sort.addEventListener('click',toggleSort);
