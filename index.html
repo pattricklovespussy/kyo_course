@@ -706,11 +706,11 @@ async function refreshMyBookings(){
     bookedCount = rows.length;
     localStorage.setItem('kyo_booked_count', String(bookedCount));
     const latest = rows[0];
-    if(latest){
-      setBookedSlot({courseId: latest.courseId || latest.course_id, day: latest.day, time: latest.time});
-    }else{
-      setBookedSlot(null);
-    }
+      if(latest){
+        setBookedSlot({courseId: latest.courseId || latest.course_id, day: latest.day, time: latest.time, bookingId: latest.id});
+      }else{
+        setBookedSlot(null);
+      }
     renderBookedCount(false);
     return rows;
   }catch(e){
@@ -977,8 +977,14 @@ function updateBar(){
   if(slot && isBookedSlot(slot)){
     t.textContent = c.name;
     s.textContent = `Thứ ${sel.day===7?'Chủ nhật':sel.day+1} · ${sel.time} · Đã giữ rồi`;
-    b.disabled = true;
-    b.textContent = 'Đã giữ slot';
+    const myBooking = getBookedSlot();
+    if (loggedIn && myBooking && myBooking.bookingId) {
+      b.disabled = false;
+      b.textContent = 'Huỷ chọn';
+    } else {
+      b.disabled = true;
+      b.textContent = 'Đã giữ slot';
+    }
     findNextSession();
     return;
   }
@@ -1012,7 +1018,34 @@ function jumpToNext(){
   updateBar();render();
   setTimeout(()=>{const g=document.querySelector('.cal-scroll');if(g)g.scrollLeft=g.scrollWidth/7*2;},80);
 }
-function handleBook(){if(!loggedIn){pendingBook=true;openLogin();}else doBook();}
+function handleBook(){
+  if (!sel) return;
+  const slot = SLOTS.find(s=>s.courseId===sel.courseId&&s.day===sel.day&&s.time===sel.time);
+  if (slot && isBookedSlot(slot)){
+    return cancelBooking();
+  }
+  if(!loggedIn){pendingBook=true;openLogin();}else doBook();
+}
+
+function cancelBooking(){
+  const bk = getBookedSlot();
+  if(!bk || !bk.bookingId){ alert('Không tìm thấy booking để huỷ.'); return; }
+  if(!currentUser || !currentUser.id){ alert('Bạn cần đăng nhập để huỷ booking'); return; }
+  const id = encodeURIComponent(bk.bookingId);
+  const userId = encodeURIComponent(currentUser.id);
+  fetch(`/api/bookings?id=${id}&userId=${userId}`, { method: 'DELETE' })
+    .then(async res=>{
+      if(!res.ok){ const data = await res.json().catch(()=>({})); throw new Error(data.error || 'Không thể huỷ booking'); }
+      setBookedSlot(null);
+      await refreshMyBookings();
+      await loadSchedule();
+      renderScheduleAvailability();
+      findNextSession();
+      render();
+      alert('Huỷ booking thành công');
+    })
+    .catch(err=>{ alert(err.message || 'Không thể huỷ booking'); });
+}
 function doBook(){
   if(!sel) return;
   const course = COURSES.find(c=>c.id===sel?.courseId);
@@ -1040,11 +1073,16 @@ function doBook(){
     body: JSON.stringify(bookingPayload)
   })
     .then(async res=>{
+      const data = await res.json().catch(()=>null);
       if(!res.ok){
-        const data = await res.json().catch(()=>({}));
-        throw new Error(data.error || 'Không thể giữ slot');
+        throw new Error((data && data.error) || 'Không thể giữ slot');
       }
-      setBookedSlot(slot);
+      const booking = data && data.booking ? data.booking : null;
+      if (booking) {
+        setBookedSlot({ courseId: booking.courseId || booking.course_id, day: booking.day, time: booking.time, bookingId: booking.id });
+      } else {
+        setBookedSlot(slot);
+      }
       await refreshMyBookings();
       await loadSchedule();
       renderScheduleAvailability();

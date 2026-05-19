@@ -126,6 +126,33 @@ module.exports = async (req, res) => {
       return res.status(200).json({ booking: normalizeBooking(data) });
     }
 
+      if (req.method === 'DELETE') {
+        const id = String(req.query?.id || req.body?.id || '').trim();
+        const userId = String(req.query?.userId || req.body?.userId || '').trim();
+        if (!id || !userId) return res.status(400).json({ error: 'Missing id or userId' });
+
+        // fetch booking
+        const { data: existing, error: fetchErr } = await supabase
+          .from(SUPABASE_BOOKINGS_TABLE)
+          .select('*')
+          .eq('id', id)
+          .limit(1)
+          .single();
+        if (fetchErr && fetchErr.code === 'PGRST116') return res.status(404).json({ error: 'Booking not found' });
+        if (fetchErr) return res.status(500).json({ error: fetchErr.message || fetchErr });
+        if (!existing) return res.status(404).json({ error: 'Booking not found' });
+        if (String(existing.user_id || '') !== userId) return res.status(403).json({ error: 'Not allowed to cancel this booking' });
+
+        const { data: deleted, error: delErr } = await supabase
+          .from(SUPABASE_BOOKINGS_TABLE)
+          .delete()
+          .eq('id', id)
+          .select('*')
+          .single();
+        if (delErr) return res.status(500).json({ error: delErr.message || delErr });
+        return res.status(200).json({ deleted: normalizeBooking(deleted) });
+      }
+
     res.setHeader('Allow', 'GET, POST');
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
