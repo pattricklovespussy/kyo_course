@@ -415,27 +415,27 @@ body.login-splash::after{content:'';position:fixed;inset:0;z-index:280;pointer-e
   <div class="stats">
     <div class="stat">
       <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-book"/></svg></div>
-      <div><div class="stat-n">18</div><div class="stat-l">Buổi đang mở</div></div>
+      <div><div class="stat-n">—</div><div class="stat-l">Buổi đang mở</div></div>
     </div>
     <div class="stat">
       <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-target"/></svg></div>
-      <div><div class="stat-n">126</div><div class="stat-l">Slot trống</div></div>
+      <div><div class="stat-n">—</div><div class="stat-l">Slot trống</div></div>
     </div>
     <div class="stat">
       <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-users"/></svg></div>
-      <div><div class="stat-n">2K+</div><div class="stat-l">Thành viên</div></div>
+      <div><div class="stat-n">—</div><div class="stat-l">Buổi học</div></div>
     </div>
     <div class="stat">
       <div class="stat-ico"><svg class="stat-svg" viewBox="0 0 24 24"><use href="#icon-clock"/></svg></div>
-      <div><div class="stat-n">22h</div><div class="stat-l">Khung giờ chính</div></div>
+      <div><div class="stat-n">—</div><div class="stat-l">Khung giờ chính</div></div>
     </div>
   </div>
   <div class="next-bar">
     <div class="pulse"></div>
     <span class="next-badge">Buổi gần nhất</span>
     <div class="next-info">
-      <span class="next-title">Market Profile Foundation</span>
-      <span class="next-meta">Thứ 4 · 22:00 · Còn 14 slot</span>
+      <span class="next-title">Chưa có lịch</span>
+      <span class="next-meta">Admin chưa đăng tải dữ liệu</span>
     </div>
     <div class="next-cd" id="cd">--:--:--</div>
     <button class="btn-jump">Chọn buổi này →</button>
@@ -585,21 +585,8 @@ function updateCd(){
 }
 setInterval(updateCd,1000);
 
-const COURSES=[
-  {id:'mkt',name:'Market Profile Foundation',level:'Beginner',topic:'mp',used:6,total:20,sessions:[{day:3,time:'22:00',label:'Market Profile Foundation'}]},
-  {id:'ctp',name:'Crypto Trading Plan',level:'Intermediate',topic:'cr',used:10,total:15,sessions:[{day:4,time:'23:00',label:'Crypto Trading Plan'}]},
-  {id:'trap',name:'Price Action: Trap & Liquidity',level:'Advanced',topic:'pa',used:9,total:12,sessions:[{day:5,time:'22:00',label:'Trap & Liquidity'}]},
-  {id:'psy',name:'Tâm lý giao dịch & kỷ luật',level:'All levels',topic:'ps',used:18,total:30,sessions:[{day:7,time:'21:00',label:'Tâm lý giao dịch'}]},
-  {id:'warmup',name:'Market Warmup Daily',level:'Beginner',topic:'mp',used:0,total:14,sessions:[{day:1,time:'21:00',label:'Market Warmup'}]},
-  {id:'qa',name:'Beginner Q&A Session',level:'Beginner',topic:'mp',used:8,total:8,sessions:[{day:2,time:'20:00',label:'Beginner Q&A'},{day:2,time:'22:00',label:'Live Review',forceFull:true}]},
-  {id:'chart',name:'Chart Review Room',level:'Intermediate',topic:'pa',used:3,total:12,sessions:[{day:6,time:'21:00',label:'Chart Review Room'}]},
-  {id:'after',name:'After Live Review',level:'All levels',topic:'pa',used:0,total:12,sessions:[{day:5,time:'00:30',label:'After Live Review'}]},
-];
-const SLOTS=[];
-COURSES.forEach(c=>c.sessions.forEach(s=>{
-  const left=Math.max(0,c.total-c.used);
-  SLOTS.push({courseId:c.id,courseName:c.name,day:s.day,time:s.time,label:s.label,full:s.forceFull||(c.used>=c.total),left,total:c.total,topic:c.topic,level:c.level});
-}));
+let COURSES=[];
+let SLOTS=[];
 
 const DAYS=['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
 const BASE=[19,20,21,22,23,24,25];
@@ -612,9 +599,120 @@ let filters={topic:'all',level:'all',time:'all'};
 let profileOpen=false;
 let bookedCount=0;
 
+function normalizeCourse(raw, idx){
+  const sessions = Array.isArray(raw?.sessions) ? raw.sessions : [];
+  const used = Number.parseInt(raw?.used, 10);
+  const total = Number.parseInt(raw?.total, 10);
+  return {
+    id: String(raw?.id || `course_${idx}`),
+    name: String(raw?.name || 'Untitled course'),
+    topic: raw?.topic || 'mp',
+    level: raw?.level || 'Beginner',
+    used: Number.isFinite(used) ? used : 0,
+    total: Number.isFinite(total) ? total : 0,
+    sessions: sessions.map((s, sIdx)=>({
+      day: Number.parseInt(s?.day, 10) || 1,
+      time: String(s?.time || ''),
+      label: String(s?.label || raw?.name || `Session ${sIdx + 1}`),
+      forceFull: Boolean(s?.forceFull)
+    }))
+  };
+}
+
+function rebuildSchedule(data){
+  const courses = Array.isArray(data?.courses) ? data.courses.map(normalizeCourse) : [];
+  COURSES = courses;
+  SLOTS = [];
+  COURSES.forEach(c=>c.sessions.forEach(s=>{
+    const left=Math.max(0,c.total-c.used);
+    SLOTS.push({courseId:c.id,courseName:c.name,day:s.day,time:s.time,label:s.label,full:s.forceFull||(c.used>=c.total),left,total:c.total,topic:c.topic,level:c.level});
+  }));
+}
+
+function loadSchedule(){
+  return (async()=>{
+    try{
+      const res = await fetch('/api/schedule');
+      if(res.ok){
+        const data = await res.json();
+        rebuildSchedule(data);
+        localStorage.setItem('kyo_public_db', JSON.stringify(data));
+        return;
+      }
+    }catch(e){}
+
+    const raw = localStorage.getItem('kyo_public_db') || localStorage.getItem('kyo_admin_db');
+    if(!raw){
+      rebuildSchedule({courses:[]});
+      return;
+    }
+    try{
+      rebuildSchedule(JSON.parse(raw));
+    }catch(e){
+      rebuildSchedule({courses:[]});
+    }
+  })();
+}
+
+function hasSchedule(){
+  return COURSES.length > 0 && SLOTS.length > 0;
+}
+
 function loadBookedCount(){
   const value = Number(localStorage.getItem('kyo_booked_count') || '0');
   bookedCount = Number.isFinite(value) ? value : 0;
+}
+
+function renderScheduleAvailability(){
+  const sbHead = document.querySelector('.sb-head h2');
+  const sbList = document.getElementById('sbList');
+  const statVals = document.querySelectorAll('.stat-n');
+  const statLabels = document.querySelectorAll('.stat-l');
+  const calSub = document.querySelector('.cal-title p');
+  const nextTitle = document.querySelector('.next-title');
+  const nextMeta = document.querySelector('.next-meta');
+  const nextCd = document.getElementById('cd');
+  const emptyBox = document.getElementById('empty');
+
+  if(!hasSchedule()){
+    if(sbHead) sbHead.textContent = 'Chưa có lịch được up';
+    if(sbList) sbList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3);font-size:11px;line-height:1.6;">Danh sách khóa học sẽ hiện khi admin đăng tải dữ liệu.</div>';
+    if(statVals.length>=4){
+      statVals[0].textContent = '—';
+      statVals[1].textContent = '—';
+      statVals[2].textContent = '—';
+      statVals[3].textContent = '—';
+    }
+    if(statLabels.length>=4){
+      statLabels[0].textContent = 'Buổi đang mở';
+      statLabels[1].textContent = 'Slot trống';
+      statLabels[2].textContent = 'Thành viên';
+      statLabels[3].textContent = 'Khung giờ chính';
+    }
+    if(calSub) calSub.textContent = 'Chờ admin đăng tải lịch để hiện thời khóa biểu.';
+    if(nextTitle) nextTitle.textContent = 'Chưa có lịch';
+    if(nextMeta) nextMeta.textContent = 'Admin chưa đăng tải dữ liệu';
+    if(nextCd) nextCd.textContent = '--:--:--';
+    if(emptyBox){
+      emptyBox.classList.add('show');
+      emptyBox.innerHTML = '<div class="empty-icon">📭</div><div>Chưa có lịch học nào được đăng tải.<br>Danh sách sẽ hiện khi admin up dữ liệu.</div>';
+    }
+    return;
+  }
+
+  if(sbHead) sbHead.textContent = 'Khóa học';
+  if(statVals.length>=4){
+    const totalCourses = COURSES.length;
+    const totalSlots = COURSES.reduce((sum, course)=>sum + (course.total || 0), 0);
+    const usedSlots = COURSES.reduce((sum, course)=>sum + (course.used || 0), 0);
+    const totalSessions = SLOTS.length;
+    statVals[0].textContent = String(totalCourses);
+    statVals[1].textContent = String(Math.max(totalSlots - usedSlots, 0));
+    statVals[2].textContent = String(totalSessions);
+    statVals[3].textContent = totalSessions ? `${Math.max(...SLOTS.map(s=>Number.parseInt(String(s.time).split(':')[0],10)||0))}h` : '—';
+  }
+  if(calSub) calSub.textContent = 'Click vào khung giờ để chọn ca học.';
+  if(emptyBox) emptyBox.innerHTML = '<div class="empty-icon">🔍</div><div>Không có buổi học nào khớp với bộ lọc.<br>Thử thay đổi chủ đề, level hoặc khung giờ.</div>';
 }
 
 function renderBookedCount(animated=false){
@@ -648,6 +746,7 @@ function renderBookedCount(animated=false){
 }
 
 function setF(type,val,btn){
+  if(!hasSchedule()) return;
   filters[type]=val;
   btn.parentElement.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
   btn.classList.add('on');
@@ -679,6 +778,15 @@ function chgWeek(d){weekOff+=d;document.getElementById('wlbl').textContent=wkStr
 function render(){renderSb();renderGrid();}
 
 function findNextSession(){
+  if(!hasSchedule()){
+    NEXT_TARGET = null;
+    const titleEl = document.querySelector('.next-title');
+    const metaEl = document.querySelector('.next-meta');
+    if(titleEl) titleEl.textContent = 'Chưa có lịch';
+    if(metaEl) metaEl.textContent = 'Admin chưa đăng tải dữ liệu';
+    updateCd();
+    return;
+  }
   const now=new Date();
   let best=null, bestDiff=Number.POSITIVE_INFINITY;
   SLOTS.forEach(s=>{
@@ -711,6 +819,9 @@ function findNextSession(){
 }
 
 function renderSb(){
+  if(!hasSchedule()){
+    return;
+  }
   const sorted=[...COURSES].sort((a,b)=>newest?b.used-a.used:a.used-b.used);
   const f=sorted.filter(c=>SLOTS.filter(s=>s.courseId===c.id).some(matchF));
   if(!f.length){document.getElementById('sbList').innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:11px;">Không có kết quả</div>';return;}
@@ -730,6 +841,11 @@ function renderSb(){
 }
 
 function renderGrid(){
+  if(!hasSchedule()){
+    document.getElementById('cgrid').innerHTML='';
+    document.getElementById('empty').classList.add('show');
+    return;
+  }
   let any=false;
   // compute start of week (Monday) based on current date + weekOff
   const now=new Date(); const daysSinceMon=(now.getDay()+6)%7;
@@ -762,19 +878,34 @@ function renderGrid(){
 }
 
 function selCourse(id){
+  if(!hasSchedule()) return;
   const s=SLOTS.find(s=>s.courseId===id&&!s.full);if(!s)return;
   sel=(sel&&sel.courseId===id)?null:{courseId:id,day:s.day,time:s.time};
   updateBar();render();
 }
 function selSlot(cid,day,time){
+  if(!hasSchedule()) return;
   sel=(sel&&sel.courseId===cid&&sel.day===day&&sel.time===time)?null:{courseId:cid,day,time};
   updateBar();render();
 }
 function toggleSort(){newest=!newest;document.getElementById('sortBtn').textContent=newest?'Mới nhất trước':'Ít slot trước';renderSb();}
 function updateBar(){
   const t=document.getElementById('bTitle'),s=document.getElementById('bSub'),b=document.getElementById('bookBtn');
+  if(!hasSchedule()){
+    if(t) t.textContent='Chưa chọn lịch';
+    if(s) s.textContent='Admin chưa đăng tải dữ liệu lịch học.';
+    if(b) b.disabled=true;
+    findNextSession();
+    return;
+  }
   if(!sel){t.textContent='Chưa chọn lịch';s.textContent='Click vào khung giờ trên lịch để chọn ca học.';b.disabled=true;findNextSession();return;}
   const c=COURSES.find(c=>c.id===sel.courseId);
+  if(!c){
+    sel=null;
+    updateBar();
+    render();
+    return;
+  }
   t.textContent=c.name;
   s.textContent=`Thứ ${sel.day===7?'Chủ nhật':sel.day+1} · ${sel.time} · ${loggedIn?'Sẵn sàng đặt lịch':'Login Discord để giữ slot'}`;
   b.disabled=false;
@@ -796,14 +927,18 @@ function updateBar(){
 }
 
 function jumpToNext(){
+  if(!hasSchedule()) return;
   weekOff=0;document.getElementById('wlbl').textContent=wkStr(0);
-  sel={courseId:'mkt',day:3,time:'22:00'};
+  const next = SLOTS.find(s=>!s.full) || SLOTS[0];
+  if(!next) return;
+  sel={courseId:next.courseId,day:next.day,time:next.time};
   updateBar();render();
   setTimeout(()=>{const g=document.querySelector('.cal-scroll');if(g)g.scrollLeft=g.scrollWidth/7*2;},80);
 }
 function handleBook(){if(!loggedIn){pendingBook=true;openLogin();}else doBook();}
 function doBook(){
-  document.getElementById('sucTitle').textContent=COURSES.find(c=>c.id===sel.courseId).name;
+  const course = COURSES.find(c=>c.id===sel?.courseId);
+  document.getElementById('sucTitle').textContent=course ? course.name : '—';
   document.getElementById('succOv').classList.add('show');
   bookedCount += 1;
   localStorage.setItem('kyo_booked_count', String(bookedCount));
@@ -885,10 +1020,23 @@ async function loadUser(){
   updateBar();
 }
 loadBookedCount();
-renderBookedCount(false);
-loadUser();
-findNextSession();
-render();
+loadSchedule().then(()=>{
+  renderBookedCount(false);
+  renderScheduleAvailability();
+  loadUser();
+  findNextSession();
+  render();
+});
+
+window.addEventListener('storage',e=>{
+  if(e.key==='kyo_public_db' || e.key==='kyo_admin_db'){
+    loadSchedule();
+    renderScheduleAvailability();
+    sel = null;
+    updateBar();
+    render();
+  }
+});
 </script>
 </body>
 </html>
