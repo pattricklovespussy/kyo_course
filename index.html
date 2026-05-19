@@ -579,6 +579,7 @@ function renderBookedCount(animated=false){
   const connEl = document.getElementById('bookedConnState');
   const progressEl = document.getElementById('bookedProgress');
   const card = document.getElementById('bookedStatCard');
+  const ctaEl = document.getElementById('heroAuthBtn');
   if(countEl) countEl.textContent = loggedIn ? String(bookedCount) : 'Đăng nhập để giữ slot';
   if(labelEl) labelEl.textContent = loggedIn ? 'Buổi học đã giữ' : 'Chưa có slot nào được giữ';
   if(connEl){
@@ -586,6 +587,7 @@ function renderBookedCount(animated=false){
       ? '<span class="tick">✓</span><span>Đã kết nối Discord</span>'
       : '<span class="disc-emo">💬</span><span>Chưa kết nối Discord</span>';
   }
+  if(ctaEl) ctaEl.style.display = loggedIn ? 'none' : 'inline-flex';
   if(subEl) subEl.textContent = loggedIn
     ? 'Bạn đã giữ slot thành công. Nhấn vào profile để đăng xuất hoặc mở tuỳ chọn khác.'
     : 'Bấm vào đây để kết nối Discord, giữ slot học và mở menu profile sau khi đăng nhập.';
