@@ -42,6 +42,8 @@ POSTGRES_CONNECTION_STRING=postgresql://postgres:password@db.xxx.supabase.co:543
 
 2. Bạn có thể dùng **SQL Editor** trong giao diện Supabase để chạy file `supabase.sql` (đã thêm vào repository) hoặc dùng `psql` với `POSTGRES_CONNECTION_STRING`.
 
+4. Nếu cần huỷ booking thủ công, dùng **SQL Editor** và file `supabase_cancel_booking.sql` (mẫu đã thêm), hoặc gọi `DELETE /api/bookings?id=<id>&userId=<userId>` từ server.
+
 3. Lưu ý bảo mật: `SUPABASE_SERVICE_ROLE_KEY` là key nhạy cảm — chỉ dùng ở backend và không đưa vào client/front-end.
 
 4. Nếu muốn, hãy thêm giá trị thật vào `.env` trên máy local hoặc trên môi trường deploy (Ví dụ: Vercel/Heroku/Render) — không lưu trữ những giá trị này trong mã nguồn.
