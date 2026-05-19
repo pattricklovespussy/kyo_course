@@ -598,6 +598,32 @@ let loggedIn=false,sel=null,weekOff=0,pendingBook=false,newest=true;
 let filters={topic:'all',level:'all',time:'all'};
 let profileOpen=false;
 let bookedCount=0;
+let bookedSlotKey = null;
+let currentUser = null;
+
+function getSlotKey(slot){
+  return `${slot.courseId}|${slot.day}|${slot.time}`;
+}
+
+function getBookedSlot(){
+  const raw = localStorage.getItem('kyo_booked_slot');
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(e){ return null; }
+}
+
+function setBookedSlot(slot){
+  bookedSlotKey = slot ? getSlotKey(slot) : null;
+  if(slot){
+    localStorage.setItem('kyo_booked_slot', JSON.stringify(slot));
+  }else{
+    localStorage.removeItem('kyo_booked_slot');
+  }
+}
+
+function isBookedSlot(slot){
+  if(!slot) return false;
+  return bookedSlotKey === getSlotKey(slot);
+}
 
 function normalizeCourse(raw, idx){
   const sessions = Array.isArray(raw?.sessions) ? raw.sessions : [];
@@ -661,6 +687,35 @@ function hasSchedule(){
 function loadBookedCount(){
   const value = Number(localStorage.getItem('kyo_booked_count') || '0');
   bookedCount = Number.isFinite(value) ? value : 0;
+  const storedSlot = getBookedSlot();
+  bookedSlotKey = storedSlot ? getSlotKey(storedSlot) : null;
+}
+
+async function refreshMyBookings(){
+  if(!currentUser?.id){
+    bookedCount = 0;
+    bookedSlotKey = null;
+    renderBookedCount(false);
+    return [];
+  }
+  try{
+    const res = await fetch(`/api/bookings?userId=${encodeURIComponent(currentUser.id)}`);
+    if(!res.ok) throw new Error('Failed to load bookings');
+    const data = await res.json();
+    const rows = Array.isArray(data.bookings) ? data.bookings : [];
+    bookedCount = rows.length;
+    localStorage.setItem('kyo_booked_count', String(bookedCount));
+    const latest = rows[0];
+    if(latest){
+      setBookedSlot({courseId: latest.courseId || latest.course_id, day: latest.day, time: latest.time});
+    }else{
+      setBookedSlot(null);
+    }
+    renderBookedCount(false);
+    return rows;
+  }catch(e){
+    return [];
+  }
 }
 
 function renderScheduleAvailability(){
@@ -723,16 +778,22 @@ function renderBookedCount(animated=false){
   const progressEl = document.getElementById('bookedProgress');
   const card = document.getElementById('bookedStatCard');
   const ctaEl = document.getElementById('heroAuthBtn');
-  if(countEl) countEl.textContent = loggedIn ? String(bookedCount) : 'Đăng nhập để giữ slot';
-  if(labelEl) labelEl.textContent = loggedIn ? 'Buổi học đã giữ' : 'Chưa có slot nào được giữ';
+  const hasBooked = Boolean(bookedSlotKey);
+  if(countEl) countEl.textContent = loggedIn ? (hasBooked ? String(bookedCount) : 'Đăng nhập để giữ slot') : 'Đăng nhập để giữ slot';
+  if(labelEl) labelEl.textContent = loggedIn ? (hasBooked ? 'Buổi học đã giữ' : 'Chưa có slot nào được giữ') : 'Chưa có slot nào được giữ';
   if(connEl){
     connEl.innerHTML = loggedIn
       ? '<span class="tick">✓</span><span>Đã kết nối Discord</span>'
       : '<span class="disc-emo">💬</span><span>Chưa kết nối Discord</span>';
   }
-  if(ctaEl) ctaEl.style.display = loggedIn ? 'none' : 'inline-flex';
+  if(ctaEl){
+    ctaEl.style.display = loggedIn ? 'none' : 'inline-flex';
+    ctaEl.textContent = hasBooked ? 'Đã giữ slot' : 'Kết nối Discord';
+  }
   if(subEl) subEl.textContent = loggedIn
-    ? 'Bạn đã giữ slot thành công. Nhấn vào profile để đăng xuất hoặc mở tuỳ chọn khác.'
+    ? (hasBooked
+        ? 'Bạn đã giữ slot thành công. Nhấn vào profile để đăng xuất hoặc mở tuỳ chọn khác.'
+        : 'Bấm vào đây để kết nối Discord, giữ slot học và mở menu profile sau khi đăng nhập.')
     : 'Bấm vào đây để kết nối Discord, giữ slot học và mở menu profile sau khi đăng nhập.';
   if(progressEl) progressEl.style.width = `${Math.min(bookedCount * 25, 100)}%`;
   if(card){
@@ -790,7 +851,7 @@ function findNextSession(){
   const now=new Date();
   let best=null, bestDiff=Number.POSITIVE_INFINITY;
   SLOTS.forEach(s=>{
-    if(s.full) return;
+    if(s.full || isBookedSlot(s)) return;
     const parts = s.time.split(':');
     const hh = parseInt(parts[0],10)||0; const mm = parseInt(parts[1],10)||0;
     const targetDayJS = (s.day===7)?0:s.day; // 1..6 -> Mon..Sat, 7->Sun(0)
@@ -826,7 +887,9 @@ function renderSb(){
   const f=sorted.filter(c=>SLOTS.filter(s=>s.courseId===c.id).some(matchF));
   if(!f.length){document.getElementById('sbList').innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:11px;">Không có kết quả</div>';return;}
   document.getElementById('sbList').innerHTML=f.map(c=>{
-    const left=c.total-c.used,full=left<=0;
+    const bookedForCourse = SLOTS.some(s=>s.courseId===c.id && isBookedSlot(s));
+    const left=Math.max(0, c.total - c.used - (bookedForCourse ? 1 : 0));
+    const full = left <= 0;
     const isSel=sel&&sel.courseId===c.id;
     return`<div class="cc${isSel?' sel':''}" data-course-id="${c.id}">
       <div class="cc-name">${c.name}</div>
@@ -859,13 +922,15 @@ function renderGrid(){
     const sh=slots.map(s=>{
       const isSel=sel&&sel.courseId===s.courseId&&sel.day===s.day&&sel.time===s.time;
       const ok=matchF(s);if(ok)any=true;
-      const cls='slot'+(s.full?' full':isSel?' sel':'')+(ok?'':' hidden');
+      const booked = isBookedSlot(s);
+      const cls='slot'+(s.full||booked?' full':isSel?' sel':'')+(ok?'':' hidden');
       const ssCls=s.full?'sstatus':'sstatus '+(s.left<=3?'low':'ok');
+      const statusText = booked ? 'Đã giữ' : (s.full ? 'Đã đầy' : `Còn ${s.left}`);
       return`<div class="${cls}" data-course-id="${s.courseId}" data-day="${s.day}" data-time="${s.time}" ${s.full||!ok?'data-disabled="1"':''}>
         <span class="scat ${s.topic}">${TL[s.topic]||''}</span>
         <div class="stime">${s.time}</div>
         <div class="slbl">${s.label}</div>
-        <div class="${ssCls}">${s.full?'Đã đầy':`Còn ${s.left}`}</div>
+        <div class="${booked ? 'sstatus ok' : ssCls}">${statusText}</div>
         <div class="slvl">${LS[s.level]||s.level}</div>
       </div>`;
     }).join('');
@@ -879,12 +944,14 @@ function renderGrid(){
 
 function selCourse(id){
   if(!hasSchedule()) return;
-  const s=SLOTS.find(s=>s.courseId===id&&!s.full);if(!s)return;
+  const s=SLOTS.find(s=>s.courseId===id&&!s.full&&!isBookedSlot(s));if(!s)return;
   sel=(sel&&sel.courseId===id)?null:{courseId:id,day:s.day,time:s.time};
   updateBar();render();
 }
 function selSlot(cid,day,time){
   if(!hasSchedule()) return;
+  const current = SLOTS.find(s=>s.courseId===cid&&s.day===day&&s.time===time);
+  if(current && (current.full || isBookedSlot(current))) return;
   sel=(sel&&sel.courseId===cid&&sel.day===day&&sel.time===time)?null:{courseId:cid,day,time};
   updateBar();render();
 }
@@ -906,9 +973,19 @@ function updateBar(){
     render();
     return;
   }
+  const slot = SLOTS.find(s=>s.courseId===sel.courseId&&s.day===sel.day&&s.time===sel.time);
+  if(slot && isBookedSlot(slot)){
+    t.textContent = c.name;
+    s.textContent = `Thứ ${sel.day===7?'Chủ nhật':sel.day+1} · ${sel.time} · Đã giữ rồi`;
+    b.disabled = true;
+    b.textContent = 'Đã giữ slot';
+    findNextSession();
+    return;
+  }
   t.textContent=c.name;
   s.textContent=`Thứ ${sel.day===7?'Chủ nhật':sel.day+1} · ${sel.time} · ${loggedIn?'Sẵn sàng đặt lịch':'Login Discord để giữ slot'}`;
   b.disabled=false;
+  b.textContent='Giữ slot học này';
   // link top-strip to selected slot
   const parts = sel.time.split(':'); const hh = parseInt(parts[0],10)||0; const mm = parseInt(parts[1],10)||0;
   const now = new Date();
@@ -937,12 +1014,48 @@ function jumpToNext(){
 }
 function handleBook(){if(!loggedIn){pendingBook=true;openLogin();}else doBook();}
 function doBook(){
+  if(!sel) return;
   const course = COURSES.find(c=>c.id===sel?.courseId);
+  const slot = SLOTS.find(s=>s.courseId===sel.courseId&&s.day===sel.day&&s.time===sel.time);
+  if(!slot) return;
+  if(slot.full || isBookedSlot(slot)){
+    renderBookedCount(false);
+    updateBar();
+    return;
+  }
   document.getElementById('sucTitle').textContent=course ? course.name : '—';
   document.getElementById('succOv').classList.add('show');
-  bookedCount += 1;
-  localStorage.setItem('kyo_booked_count', String(bookedCount));
-  renderBookedCount(true);
+  const bookingPayload = {
+    userId: currentUser?.id || '',
+    userName: currentUser?.username || currentUser?.global_name || 'Discord user',
+    courseId: course.id,
+    courseName: course.name,
+    day: slot.day,
+    time: slot.time,
+    slotKey: getSlotKey(slot)
+  };
+  fetch('/api/bookings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bookingPayload)
+  })
+    .then(async res=>{
+      if(!res.ok){
+        const data = await res.json().catch(()=>({}));
+        throw new Error(data.error || 'Không thể giữ slot');
+      }
+      setBookedSlot(slot);
+      await refreshMyBookings();
+      await loadSchedule();
+      renderScheduleAvailability();
+      findNextSession();
+      render();
+    })
+    .catch(err=>{
+      alert(err.message || 'Không thể giữ slot');
+      closeSucc();
+      updateBar();
+    });
 }
 function openLogin(){document.getElementById('loginOv').classList.add('show');}
 function closeLogin(){document.getElementById('loginOv').classList.remove('show');}
@@ -1005,6 +1118,7 @@ async function loadUser(){
     if(data && data.loggedIn){
       loggedIn = true;
       const u = data.user;
+      currentUser = u;
       const name = u.username;
       document.getElementById('profileWrap').classList.add('show');
       document.getElementById('uChip').classList.add('show');
@@ -1014,12 +1128,14 @@ async function loadUser(){
       const lb = document.getElementById('loginBtn'); if(lb) lb.style.display='none';
       document.body.classList.add('login-splash');
       setTimeout(()=>document.body.classList.remove('login-splash'),1200);
+      await refreshMyBookings();
       renderBookedCount(true);
     }
   }catch(e){}
   updateBar();
 }
 loadBookedCount();
+bookedSlotKey = getBookedSlot() ? getSlotKey(getBookedSlot()) : null;
 loadSchedule().then(()=>{
   renderBookedCount(false);
   renderScheduleAvailability();

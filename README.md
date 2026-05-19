@@ -62,3 +62,9 @@ Thiết lập trên Supabase:
 4. Đăng nhập bằng email/password đó trong `admin.html`.
 
 Nếu bạn muốn giới hạn chỉ một vài email, nên quản lý bằng user invite của Supabase thay vì hardcode danh sách tài khoản trong frontend.
+
+### Bookings dùng chung cho mọi người
+
+Mỗi lần học viên bấm giữ slot, ứng dụng sẽ ghi một dòng vào bảng `schedule_bookings` trên Supabase. Trang công khai đọc lại dữ liệu từ server để giảm số slot cho toàn bộ người dùng.
+
+Khi chạy `supabase.sql`, hãy tạo luôn bảng `schedule_bookings` cùng index và unique constraint trên `(user_id, slot_key)`.

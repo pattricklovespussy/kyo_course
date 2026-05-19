@@ -4,6 +4,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'schedule_state';
 const SUPABASE_RECORD_ID = process.env.SUPABASE_RECORD_ID || 'main';
+const SUPABASE_BOOKINGS_TABLE = process.env.SUPABASE_BOOKINGS_TABLE || 'schedule_bookings';
 
 const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -16,6 +17,37 @@ function normalizeSchedule(payload){
     sessions: Array.isArray(data.sessions) ? data.sessions : [],
     updatedAt: data.updatedAt || Date.now()
   };
+}
+
+async function loadBookingCounts(){
+  if (!supabase) return {};
+  try {
+    const { data, error } = await supabase
+      .from(SUPABASE_BOOKINGS_TABLE)
+      .select('course_id');
+    if (error) return {};
+    return (data || []).reduce((counts, row) => {
+      if (!row?.course_id) return counts;
+      counts[row.course_id] = (counts[row.course_id] || 0) + 1;
+      return counts;
+    }, {});
+  } catch (err) {
+    return {};
+  }
+}
+
+function applyBookingCounts(schedule, bookingCounts){
+  const data = normalizeSchedule(schedule);
+  data.courses = data.courses.map(course => {
+    const baseUsed = Number.parseInt(course.used, 10);
+    const used = Number.isFinite(baseUsed) ? baseUsed : 0;
+    const booked = Number.parseInt(bookingCounts?.[course.id], 10);
+    return {
+      ...course,
+      used: used + (Number.isFinite(booked) ? booked : 0)
+    };
+  });
+  return data;
 }
 
 module.exports = async (req, res) => {
@@ -37,7 +69,8 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: error.message || error });
       }
       const payload = data?.payload || { courses: [], sessions: [] };
-      return res.status(200).json(normalizeSchedule(payload));
+      const bookingCounts = await loadBookingCounts();
+      return res.status(200).json(applyBookingCounts(payload, bookingCounts));
     }
 
     if (req.method === 'PUT' || req.method === 'POST') {

@@ -1,0 +1,135 @@
+const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'schedule_state';
+const SUPABASE_RECORD_ID = process.env.SUPABASE_RECORD_ID || 'main';
+const SUPABASE_BOOKINGS_TABLE = process.env.SUPABASE_BOOKINGS_TABLE || 'schedule_bookings';
+
+const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
+
+function normalizeBooking(row){
+  return {
+    id: row?.id || null,
+    userId: row?.user_id || '',
+    userName: row?.user_name || '',
+    courseId: row?.course_id || '',
+    courseName: row?.course_name || '',
+    day: Number.parseInt(row?.day, 10) || 1,
+    time: String(row?.time || ''),
+    slotKey: row?.slot_key || '',
+    createdAt: row?.created_at || null
+  };
+}
+
+async function loadSchedule(){
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('payload')
+    .eq('id', SUPABASE_RECORD_ID)
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  const payload = data?.payload || { courses: [], sessions: [] };
+  return payload;
+}
+
+async function countBookings(courseId){
+  const { count, error } = await supabase
+    .from(SUPABASE_BOOKINGS_TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('course_id', courseId);
+  if (error) throw error;
+  return Number(count || 0);
+}
+
+module.exports = async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase not configured on server' });
+  }
+
+  try {
+    if (req.method === 'GET') {
+      const userId = String(req.query?.userId || req.query?.user_id || '').trim();
+      let query = supabase
+        .from(SUPABASE_BOOKINGS_TABLE)
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (userId) query = query.eq('user_id', userId);
+      const { data, error } = await query;
+      if (error) return res.status(500).json({ error: error.message || error });
+      return res.status(200).json({ bookings: (data || []).map(normalizeBooking) });
+    }
+
+    if (req.method === 'POST') {
+      const body = req.body || req;
+      const userId = String(body.userId || body.user_id || '').trim();
+      const userName = String(body.userName || body.user_name || '').trim();
+      const courseId = String(body.courseId || body.course_id || '').trim();
+      const courseName = String(body.courseName || body.course_name || '').trim();
+      const day = Number.parseInt(body.day, 10) || 1;
+      const time = String(body.time || '').trim();
+      const slotKey = String(body.slotKey || body.slot_key || `${courseId}|${day}|${time}`).trim();
+
+      if (!userId || !courseId || !time || !slotKey) {
+        return res.status(400).json({ error: 'Missing booking fields' });
+      }
+
+      const schedule = await loadSchedule();
+      const course = Array.isArray(schedule.courses) ? schedule.courses.find(c => String(c.id) === courseId) : null;
+      if (!course) {
+        return res.status(404).json({ error: 'Course not found' });
+      }
+
+      const existingByUser = await supabase
+        .from(SUPABASE_BOOKINGS_TABLE)
+        .select('id, slot_key')
+        .eq('user_id', userId)
+        .eq('slot_key', slotKey)
+        .limit(1)
+        .single();
+      if (!existingByUser.error && existingByUser.data) {
+        return res.status(409).json({ error: 'You already booked this slot' });
+      }
+
+      const currentBookings = await countBookings(courseId);
+      const baseUsed = Number.parseInt(course.used, 10);
+      const used = Number.isFinite(baseUsed) ? baseUsed : 0;
+      const total = Number.parseInt(course.total, 10) || 0;
+      if (used + currentBookings >= total) {
+        return res.status(409).json({ error: 'No seats left' });
+      }
+
+      const row = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        user_name: userName,
+        course_id: courseId,
+        course_name: courseName || course.name || '',
+        day,
+        time,
+        slot_key: slotKey,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from(SUPABASE_BOOKINGS_TABLE)
+        .insert(row)
+        .select('*')
+        .single();
+      if (error) return res.status(500).json({ error: error.message || error });
+      return res.status(200).json({ booking: normalizeBooking(data) });
+    }
+
+    res.setHeader('Allow', 'GET, POST');
+    res.status(405).json({ error: 'Method not allowed' });
+  } catch (err) {
+    console.error('api/bookings error', err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+};
