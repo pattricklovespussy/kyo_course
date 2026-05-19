@@ -273,6 +273,51 @@ body.login-splash::after{content:'';position:fixed;inset:0;z-index:280;pointer-e
 @keyframes loginBurst{0%{opacity:0;transform:scale(.98);}12%{opacity:1;}100%{opacity:0;transform:scale(1.03);}}
 .hero-stat.celebrate{animation:cardPop .65s cubic-bezier(.34,1.56,.64,1);}
 @keyframes cardPop{0%{transform:translateY(10px) scale(.96);opacity:.2;}100%{transform:translateY(0) scale(1);opacity:1;}}
+
+/* Responsive: mobile adjustments to keep login + schedule visible */
+@media (max-width: 720px){
+  header{padding:0 12px;gap:10px;height:56px;}
+  nav{display:none;} /* hide secondary nav to prioritize login */
+  .logo-text .logo-sub{display:none;} 
+  .logo-main{font-size:13px}
+
+  .hero{flex-direction:column;max-height:none}
+  .hero-left{padding:20px 18px 18px 16px}
+  .hero-right{width:100%;border-left:none;border-top:1px solid var(--b1)}
+
+  .main{flex-direction:column;padding:0 12px 18px 12px;gap:12px}
+  .sb{width:100%;border-right:none;border-left:none;order:1}
+  .cal{order:2}
+
+  .fbar{padding:10px 8px;gap:10px;overflow-x:auto;flex-wrap:wrap}
+  .fgroup{flex:1 1 auto;min-width:0}
+
+  /* Stack days vertically on mobile for easier vertical scroll */
+  .cgrid{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:18px}
+  .dcol{min-width:0}
+
+  /* Calendar slot sizing */
+  .slot{padding:10px;border-radius:8px}
+  .stime{font-size:16px}
+
+  /* Sidebar cards compact */
+  .cc{padding:10px;border-radius:8px}
+
+  .top-strip{flex-direction:column;align-items:flex-start;height:auto;padding:8px 12px}
+  .stats{width:100%;display:flex;gap:8px;overflow:auto;padding-bottom:8px}
+  .stat{padding:8px 10px}
+  .next-bar{width:100%;padding:8px 10px}
+
+  .bbar{flex-direction:column;align-items:flex-start;gap:8px;padding:12px}
+  .bbar-r{width:100%;display:flex;justify-content:flex-end}
+}
+
+@media (max-width:420px){
+  .hero-h1{font-size:24px}
+  .hero-desc{font-size:13px;max-width:100%}
+  .btn-login{padding:8px 12px;font-size:12px}
+  .stat-n{font-size:15px}
+}
 </style>
 </head>
 <body>
