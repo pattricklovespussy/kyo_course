@@ -804,7 +804,7 @@ function renderBookedCount(animated=false){
   const card = document.getElementById('bookedStatCard');
   const ctaEl = document.getElementById('heroAuthBtn');
   const hasBooked = Boolean(bookedSlotKey);
-  if(countEl) countEl.textContent = loggedIn ? (hasBooked ? String(bookedCount) : 'Đăng nhập để giữ slot') : 'Đăng nhập để giữ slot';
+  if(countEl) countEl.textContent = loggedIn ? (hasBooked ? String(bookedCount) : 'Chọn buổi học') : 'Chọn buổi học';
   if(labelEl) labelEl.textContent = loggedIn ? (hasBooked ? 'Buổi học đã giữ' : 'Chưa có slot nào được giữ') : 'Chưa có slot nào được giữ';
   if(connEl){
     connEl.innerHTML = loggedIn

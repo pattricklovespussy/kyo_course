@@ -493,30 +493,30 @@ input:checked + .slider:before{transform:translateX(18px);background:#fff;}
         <button class="btn-del-confirm" id="delConfirmBtn">Xóa</button>
       </div>
     </div>
+  </div>
+</div>
 
-      <!-- MODAL: Session Bookings -->
-      <div class="ov" id="sessionBookingsModal" onclick="if(event.target===this)closeSessionBookings()">
-        <div class="modal">
-          <div class="modal-hdr">
-            <h2>Danh sách đăng ký</h2>
-            <button class="mx" onclick="closeSessionBookings()">✕</button>
-          </div>
-          <div class="modal-body">
-            <div style="margin-bottom:8px;color:var(--tx2);">Buổi: <strong id="sb-course-name">—</strong> · <span id="sb-day">—</span> · <span id="sb-time">—</span></div>
-            <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-              <button class="btn-edit" id="sb-retry">Tải lại</button>
-              <button class="btn-edit" id="sb-show-course">Hiện tất cả đăng ký của khóa</button>
-              <div style="flex:1"></div>
-              <div id="sb-info" style="font-size:12px;color:var(--tx3)"></div>
-            </div>
-            <div id="sb-list">Đang tải…</div>
-            <pre id="sb-raw" style="display:none;background:var(--s2);border:1px solid var(--b1);padding:8px;margin-top:8px;color:var(--tx3);font-family:JetBrains Mono,monospace;white-space:pre-wrap;max-height:240px;overflow:auto;"></pre>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeSessionBookings()">Đóng</button>
-          </div>
-        </div>
+<!-- MODAL: Session Bookings -->
+<div class="ov" id="sessionBookingsModal" onclick="if(event.target===this)closeSessionBookings()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2>Danh sách đăng ký</h2>
+      <button class="mx" onclick="closeSessionBookings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:8px;color:var(--tx2);">Buổi: <strong id="sb-course-name">—</strong> · <span id="sb-day">—</span> · <span id="sb-time">—</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+        <button class="btn-edit" id="sb-retry">Tải lại</button>
+        <button class="btn-edit" id="sb-show-course">Hiện tất cả đăng ký của khóa</button>
+        <div style="flex:1"></div>
+        <div id="sb-info" style="font-size:12px;color:var(--tx3)"></div>
       </div>
+      <div id="sb-list">Đang tải…</div>
+      <pre id="sb-raw" style="display:none;background:var(--s2);border:1px solid var(--b1);padding:8px;margin-top:8px;color:var(--tx3);font-family:JetBrains Mono,monospace;white-space:pre-wrap;max-height:240px;overflow:auto;"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSessionBookings()">Đóng</button>
+    </div>
   </div>
 </div>
 
@@ -940,10 +940,7 @@ function saveCourse(){
 }
 
 // ── SESSION MODAL (standalone) ──
-let editSessionIdx = -1;
-
 function openAddSession(){
-  editSessionIdx = -1;
   document.getElementById('sessionModalTitle').textContent = 'Thêm buổi học';
   populateCourseSelect('s-courseId');
   document.getElementById('s-label').value = '';
@@ -1020,8 +1017,6 @@ function closeSessionBookings(){ document.getElementById('sessionBookingsModal')
 document.addEventListener('click', (e)=>{
   const target = e.target;
   if(target && target.id === 'sb-retry'){
-    const hdr = document.getElementById('sb-course-name');
-    const courseName = hdr ? hdr.textContent : null;
     // find session by matching courseName / courseId and re-open modal
     // simple approach: close and reopen using sessions find
     // get displayed course id from sb-course-name (we store id in text when opening)
