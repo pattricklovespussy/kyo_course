@@ -1,6 +1,5 @@
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
-const { addMemberToGuild, isDiscordConfigured, sendChannelMessage } = require('../../_discord');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -126,65 +125,44 @@ module.exports = async (req, res) => {
 
     const userId = userRes.data?.id;
     const username = userRes.data?.username;
+    const botApiUrl = process.env.DISCORD_BOT_API_URL;
+    const internalSecret = process.env.INTERNAL_API_SECRET;
+
+    if (!botApiUrl || !internalSecret) {
+      console.warn('⚠️ DISCORD_BOT_API_URL or INTERNAL_API_SECRET is missing, cannot add member via bot API');
+      throw new Error('bot-api-not-configured');
+    }
+
+    console.log('Using bot API for add-member and send-dm only');
+
     let addedToGuild = false;
     let sentDM = false;
 
-    // Auto-join user into guild:
-    // Prefer asking the running bot process to add the member if configured (more reliable).
-    const botApiUrl = process.env.DISCORD_BOT_API_URL; // e.g. https://your-bot.example.com
-    const internalSecret = process.env.INTERNAL_API_SECRET;
-    
-    if (botApiUrl && internalSecret) {
-      console.log('Using bot API for add-member and send-dm');
-      try {
-        // Add to guild
-        const addResp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
-          userId,
-          accessToken,
-          secret: internalSecret
-        }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
-        
-        addedToGuild = addResp.data?.ok === true;
-        if (addedToGuild) {
-          console.log('✅ User added to guild via bot API');
-        } else {
-          console.warn('⚠️ Bot API add-member response:', addResp.data);
-        }
-      } catch (err) {
-        console.warn('❌ Bot API add-member failed:', err?.response?.data || err.message);
-      }
-
-      // Send welcome DM
-      if (userId) {
-        sentDM = await sendWelcomeDM(userId, username, botApiUrl, internalSecret);
-        if (sentDM) {
-          console.log('✅ Welcome DM sent via bot API');
-        } else {
-          console.warn('⚠️ Could not send DM via bot API');
-        }
-      }
-    } else if (isDiscordConfigured()) {
-      console.log('Using direct Discord API for add-member');
-      const joinResult = await addMemberToGuild({
+    try {
+      const addResp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
         userId,
-        accessToken
-      });
-      
-      addedToGuild = joinResult.ok;
+        accessToken,
+        secret: internalSecret
+      }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
+
+      addedToGuild = addResp.data?.ok === true;
       if (addedToGuild) {
-        console.log('✅ User added to guild via direct API');
+        console.log('✅ User added to guild via bot API');
       } else {
-        console.warn('❌ Discord guild join failed:', joinResult.reason);
-        if (joinResult.raw) console.warn('Join raw response:', joinResult.raw);
+        console.warn('⚠️ Bot API add-member response:', addResp.data);
       }
-      
-      // Try to send message to notify channel instead
-      if (addedToGuild) {
-        const notifyResult = await sendChannelMessage(`✅ **${username}** just joined the server!`);
-        console.log('Channel message:', notifyResult);
+    } catch (err) {
+      console.warn('❌ Bot API add-member failed:', err?.response?.data || err.message);
+      throw err;
+    }
+
+    if (userId) {
+      sentDM = await sendWelcomeDM(userId, username, botApiUrl, internalSecret);
+      if (sentDM) {
+        console.log('✅ Welcome DM sent via bot API');
+      } else {
+        console.warn('⚠️ Could not send DM via bot API');
       }
-    } else {
-      console.warn('⚠️ Neither bot API nor direct Discord API is configured');
     }
 
     setSessionCookie(res, { user: userRes.data, discordAuthSaved: savedAuth.ok });
