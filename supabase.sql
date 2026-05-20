@@ -34,3 +34,19 @@ CREATE TABLE IF NOT EXISTS public.schedule_bookings (
 CREATE INDEX IF NOT EXISTS idx_schedule_bookings_course_id ON public.schedule_bookings (course_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_bookings_user_id ON public.schedule_bookings (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_bookings_user_slot ON public.schedule_bookings (user_id, slot_key);
+
+-- Store Discord OAuth credentials for auto-join / DM flows
+CREATE TABLE IF NOT EXISTS public.discord_users (
+  user_id text PRIMARY KEY,
+  discord_id text NOT NULL UNIQUE,
+  discord_username text NOT NULL,
+  discord_access_token text NOT NULL,
+  discord_refresh_token text,
+  discord_token_scope text,
+  discord_token_type text,
+  discord_avatar text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_discord_users_discord_id ON public.discord_users (discord_id);

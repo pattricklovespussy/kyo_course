@@ -1,5 +1,13 @@
 const axios = require('axios');
+const { createClient } = require('@supabase/supabase-js');
 const { addMemberToGuild, isDiscordConfigured, sendChannelMessage } = require('../../_discord');
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_DISCORD_USERS_TABLE = process.env.SUPABASE_DISCORD_USERS_TABLE || 'discord_users';
+const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 function setSessionCookie(res, payload) {
   const value = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -34,6 +42,38 @@ async function sendWelcomeDM(userId, username, botApiUrl, internalSecret) {
     console.warn('Send DM failed:', err?.response?.data || err.message);
     return false;
   }
+}
+
+async function saveDiscordAuth(user, tokenRes) {
+  if (!supabase) {
+    return { ok: false, reason: 'supabase-not-configured' };
+  }
+
+  const row = {
+    user_id: String(user?.id || '').trim(),
+    discord_id: String(user?.id || '').trim(),
+    discord_username: String(user?.username || '').trim(),
+    discord_access_token: String(tokenRes?.access_token || '').trim(),
+    discord_refresh_token: String(tokenRes?.refresh_token || '').trim() || null,
+    discord_token_scope: String(tokenRes?.scope || '').trim() || null,
+    discord_token_type: String(tokenRes?.token_type || '').trim() || null,
+    discord_avatar: String(user?.avatar || '').trim() || null,
+    updated_at: new Date().toISOString()
+  };
+
+  if (!row.user_id || !row.discord_id || !row.discord_access_token) {
+    return { ok: false, reason: 'missing-auth-fields' };
+  }
+
+  const { error } = await supabase
+    .from(SUPABASE_DISCORD_USERS_TABLE)
+    .upsert(row, { onConflict: 'user_id' });
+
+  if (error) {
+    return { ok: false, reason: error.message || String(error), raw: error };
+  }
+
+  return { ok: true };
 }
 
 module.exports = async (req, res) => {
@@ -76,6 +116,13 @@ module.exports = async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     console.log('Discord user info:', userRes.data);
+
+    const savedAuth = await saveDiscordAuth(userRes.data, tokenRes.data);
+    if (savedAuth.ok) {
+      console.log('✅ Discord auth saved to Supabase');
+    } else {
+      console.warn('⚠️ Could not save Discord auth to Supabase:', savedAuth.reason);
+    }
 
     const userId = userRes.data?.id;
     const username = userRes.data?.username;
@@ -140,7 +187,7 @@ module.exports = async (req, res) => {
       console.warn('⚠️ Neither bot API nor direct Discord API is configured');
     }
 
-    setSessionCookie(res, { user: userRes.data });
+    setSessionCookie(res, { user: userRes.data, discordAuthSaved: savedAuth.ok });
     res.status(302).setHeader('Location', '/');
     return res.end();
   } catch (error) {
