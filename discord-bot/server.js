@@ -31,9 +31,16 @@ const bot = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
-bot.once('ready', () => {
+// `ready` event was renamed to `clientReady` in discord.js v15.
+// Listen to both names but ensure the handler runs only once.
+let _readyHandled = false;
+function _handleReady() {
+  if (_readyHandled) return;
+  _readyHandled = true;
   console.log(`✅ Bot đã online: ${bot.user.tag}`);
-});
+}
+bot.once('clientReady', _handleReady);
+bot.once('ready', _handleReady);
 
 bot.login(DISCORD_BOT_TOKEN);
 
