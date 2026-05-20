@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { addMemberToGuild, isDiscordConfigured } = require('../../_discord');
+const { addMemberToGuild, isDiscordConfigured, sendChannelMessage } = require('../../_discord');
 
 function setSessionCookie(res, payload) {
   const value = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -16,6 +16,24 @@ function setSessionCookie(res, payload) {
   }
 
   res.setHeader('Set-Cookie', cookieParts.join('; '));
+}
+
+// Helper: gửi DM cho user qua bot
+async function sendWelcomeDM(userId, username, botApiUrl, internalSecret) {
+  if (!botApiUrl || !internalSecret) {
+    return false;
+  }
+  try {
+    const resp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/send-dm`, {
+      userId,
+      username,
+      secret: internalSecret
+    }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
+    return resp.data?.ok === true;
+  } catch (err) {
+    console.warn('Send DM failed:', err?.response?.data || err.message);
+    return false;
+  }
 }
 
 module.exports = async (req, res) => {
@@ -59,35 +77,67 @@ module.exports = async (req, res) => {
     });
     console.log('Discord user info:', userRes.data);
 
+    const userId = userRes.data?.id;
+    const username = userRes.data?.username;
+    let addedToGuild = false;
+    let sentDM = false;
+
     // Auto-join user into guild:
     // Prefer asking the running bot process to add the member if configured (more reliable).
     const botApiUrl = process.env.DISCORD_BOT_API_URL; // e.g. https://your-bot.example.com
     const internalSecret = process.env.INTERNAL_API_SECRET;
+    
     if (botApiUrl && internalSecret) {
-      console.log('Discord callback using bot API add-member branch');
+      console.log('Using bot API for add-member and send-dm');
       try {
-        const resp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
-          userId: userRes.data?.id,
+        // Add to guild
+        const addResp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
+          userId,
           accessToken,
           secret: internalSecret
         }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
-        if (resp.data && resp.data.ok) console.log('User added to guild via bot API');
-        else console.warn('Bot API add-member response:', resp.data);
+        
+        addedToGuild = addResp.data?.ok === true;
+        if (addedToGuild) {
+          console.log('✅ User added to guild via bot API');
+        } else {
+          console.warn('⚠️ Bot API add-member response:', addResp.data);
+        }
       } catch (err) {
-        console.warn('Bot API add-member failed:', err?.response?.data || err.message);
+        console.warn('❌ Bot API add-member failed:', err?.response?.data || err.message);
+      }
+
+      // Send welcome DM
+      if (userId) {
+        sentDM = await sendWelcomeDM(userId, username, botApiUrl, internalSecret);
+        if (sentDM) {
+          console.log('✅ Welcome DM sent via bot API');
+        } else {
+          console.warn('⚠️ Could not send DM via bot API');
+        }
       }
     } else if (isDiscordConfigured()) {
-      console.log('Discord callback using direct Discord API add-member branch');
+      console.log('Using direct Discord API for add-member');
       const joinResult = await addMemberToGuild({
-        userId: userRes.data?.id,
+        userId,
         accessToken
       });
-      if (!joinResult.ok) {
-        console.warn('Discord guild join failed:', joinResult.reason);
-        if (joinResult.raw) console.warn('Join raw response:', joinResult.raw);
+      
+      addedToGuild = joinResult.ok;
+      if (addedToGuild) {
+        console.log('✅ User added to guild via direct API');
       } else {
-        console.log('User added to guild successfully');
+        console.warn('❌ Discord guild join failed:', joinResult.reason);
+        if (joinResult.raw) console.warn('Join raw response:', joinResult.raw);
       }
+      
+      // Try to send message to notify channel instead
+      if (addedToGuild) {
+        const notifyResult = await sendChannelMessage(`✅ **${username}** just joined the server!`);
+        console.log('Channel message:', notifyResult);
+      }
+    } else {
+      console.warn('⚠️ Neither bot API nor direct Discord API is configured');
     }
 
     setSessionCookie(res, { user: userRes.data });

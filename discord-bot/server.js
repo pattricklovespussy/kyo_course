@@ -173,6 +173,41 @@ app.post('/internal/add-member', async (req, res) => {
   }
 });
 
+// Internal: allow API server to ask the bot to send a welcome DM
+app.post('/internal/send-dm', async (req, res) => {
+  const secret = req.body?.secret || req.headers['x-internal-secret'];
+  if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
+    return res.status(403).json({ ok: false, message: 'forbidden' });
+  }
+
+  const userId = req.body?.userId;
+  const username = req.body?.username;
+  if (!userId) return res.status(400).json({ ok: false, message: 'missing userId' });
+
+  try {
+    const loginEmbed = new EmbedBuilder()
+      .setColor(0xE8B84B)
+      .setTitle('✅ Đăng nhập thành công!')
+      .setDescription(`Xin chào **${username || 'bạn'}**! Bạn đã đăng nhập vào **TradingWithKyo Schedule Hub** thành công.`)
+      .addFields(
+        { name: '🏫 Server', value: 'Bạn đã được thêm vào server TradingWithKyo', inline: false },
+        { name: '📅 Tiếp theo', value: 'Hãy chọn một slot học và đặt lịch của bạn!', inline: false }
+      )
+      .setFooter({ text: 'TradingWithKyo — Schedule Hub' })
+      .setTimestamp();
+
+    const success = await sendDM(userId, loginEmbed);
+    if (success) {
+      return res.json({ ok: true });
+    } else {
+      return res.status(500).json({ ok: false, message: 'Failed to send DM' });
+    }
+  } catch (err) {
+    console.error('internal send-dm failed:', err.message);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 // ── API: Lấy thông tin user hiện tại ─────────────────────────────────
 app.get('/me', (req, res) => {
   if (req.session.loggedIn && req.session.user) {

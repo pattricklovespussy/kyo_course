@@ -9,6 +9,16 @@ Bot này làm 4 việc tự động:
 
 ---
 
+## ⚡ Deployment Flow
+
+```
+Vercel (Web)  →  call  →  Railway (Bot Service)  →  Discord API
+   oauth                  /internal/add-member
+   callback               /internal/send-dm
+```
+
+---
+
 ## Bước 1: Tạo Discord Application & Bot
 
 1. Vào https://discord.com/developers/applications → **New Application**
@@ -25,9 +35,9 @@ Bot này làm 4 việc tự động:
 
 Trong tab **OAuth2** → **Redirects** → Add:
 ```
-http://localhost:3000/callback
+https://kyo-course.vercel.app/auth/discord/callback
 ```
-(Sau khi deploy, thêm domain thật của bạn)
+(Dùng URL thực của Vercel app của bạn)
 
 ---
 
@@ -35,7 +45,10 @@ http://localhost:3000/callback
 
 Tạo invite link trong tab **OAuth2 → URL Generator**:
 - Scopes: `bot`, `applications.commands`
-- Bot Permissions: `Manage Roles`, `Send Messages`, `Create Instant Invite`
+- Bot Permissions: 
+  - ✅ `Manage Roles`
+  - ✅ `Send Messages` 
+  - ✅ `Read Message History`
 
 Mở link → mời bot vào server của bạn.
 
@@ -45,6 +58,74 @@ Mở link → mời bot vào server của bạn.
 
 1. Bật **Developer Mode** trong Discord Settings → Advanced
 2. Chuột phải vào Server → **Copy Server ID**
+
+---
+
+## Bước 5: Setup Railway Deployment
+
+### Environment Variables (Railway Bot Service)
+```
+DISCORD_BOT_TOKEN=<bot_token_from_step_1>
+DISCORD_GUILD_ID=<server_id_from_step_4>
+DISCORD_CLIENT_ID=<client_id_from_step_1>
+DISCORD_CLIENT_SECRET=<client_secret_from_step_1>
+DISCORD_REDIRECT_URI=https://kyo-course.vercel.app/auth/discord/callback
+INTERNAL_API_SECRET=<random_secret_string>
+SESSION_SECRET=<random_session_string>
+PORT=3000
+```
+
+### Get Railway Public URL
+1. Go to Railway dashboard → Bot service
+2. Settings → Domains → Enable public URL
+3. Copy the URL (e.g., `https://discord-bot-production.railway.app`)
+
+---
+
+## Bước 6: Setup Vercel Environment Variables
+
+Add to Vercel project:
+```
+DISCORD_BOT_API_URL=https://discord-bot-production.railway.app
+INTERNAL_API_SECRET=<same_as_railway>
+DISCORD_CLIENT_ID=<client_id>
+DISCORD_CLIENT_SECRET=<client_secret>
+DISCORD_REDIRECT_URI=https://kyo-course.vercel.app/auth/discord/callback
+```
+
+---
+
+## 🔑 Critical: INTERNAL_API_SECRET
+
+Both Railway and Vercel **must have the exact same secret**:
+- This is used for secure communication between services
+- Generate with: `openssl rand -hex 32`
+- Keep it secret! Do not commit to git
+
+---
+
+## ✅ Testing
+
+1. Go to https://kyo-course.vercel.app
+2. Click "Login with Discord"
+3. Authorize
+4. Check:
+   - ✅ You're logged in
+   - ✅ You appear in the Discord server
+   - ✅ You receive a welcome DM
+
+---
+
+## 🐛 Debugging
+
+Check logs:
+- **Railway**: View service logs in dashboard
+- **Vercel**: `vercel logs --prod`
+
+Common issues:
+- Bot doesn't appear: Check bot permissions in Discord
+- User not added: Check DISCORD_BOT_API_URL is set
+- 403 error: INTERNAL_API_SECRET doesn't match
 
 ---
 
