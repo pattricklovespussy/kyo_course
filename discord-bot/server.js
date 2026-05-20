@@ -18,6 +18,20 @@ const {
   SESSION_SECRET,
 } = process.env;
 
+const BOT_TOKEN = String(DISCORD_BOT_TOKEN || '').trim();
+const GUILD_ID = String(DISCORD_GUILD_ID || '').trim();
+const INTERNAL_SECRET = String(process.env.INTERNAL_API_SECRET || '').trim();
+
+if (!BOT_TOKEN) {
+  console.error('Missing DISCORD_BOT_TOKEN. Set it in Railway env vars for the bot service.');
+}
+if (!GUILD_ID) {
+  console.error('Missing DISCORD_GUILD_ID. Set it in Railway env vars for the bot service.');
+}
+if (!INTERNAL_SECRET) {
+  console.warn('Missing INTERNAL_API_SECRET. /internal/add-member will be forbidden.');
+}
+
 // ── SESSION ───────────────────────────────────────────────────────────
 app.use(session({
   secret: SESSION_SECRET || 'kyo-secret-key',
@@ -42,7 +56,10 @@ function _handleReady() {
 bot.once('clientReady', _handleReady);
 bot.once('ready', _handleReady);
 
-bot.login(DISCORD_BOT_TOKEN);
+bot.login(BOT_TOKEN).catch((err) => {
+  console.error('Discord bot login failed:', err?.message || err);
+  process.exitCode = 1;
+});
 
 // Helper: gửi DM cho user
 async function sendDM(userId, embed) {
@@ -138,7 +155,7 @@ app.get('/callback', async (req, res) => {
 // Protect with an internal secret: set INTERNAL_API_SECRET in the bot env.
 app.post('/internal/add-member', async (req, res) => {
   const secret = req.body?.secret || req.headers['x-internal-secret'];
-  if (!process.env.INTERNAL_API_SECRET || secret !== process.env.INTERNAL_API_SECRET) {
+  if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
     return res.status(403).json({ ok: false, message: 'forbidden' });
   }
 
@@ -147,7 +164,7 @@ app.post('/internal/add-member', async (req, res) => {
   if (!userId || !accessToken) return res.status(400).json({ ok: false, message: 'missing userId or accessToken' });
 
   try {
-    const guild = await bot.guilds.fetch(DISCORD_GUILD_ID);
+    const guild = await bot.guilds.fetch(GUILD_ID);
     await guild.members.add(userId, { accessToken });
     return res.json({ ok: true });
   } catch (err) {

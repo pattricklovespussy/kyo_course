@@ -1,5 +1,4 @@
 const axios = require('axios');
-const querystring = require('querystring');
 const { addMemberToGuild, isDiscordConfigured } = require('../../_discord');
 
 function setSessionCookie(res, payload) {
@@ -34,15 +33,22 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('Discord callback env flags:', {
+      hasBotApiUrl: Boolean(process.env.DISCORD_BOT_API_URL),
+      hasInternalSecret: Boolean(process.env.INTERNAL_API_SECRET),
+      hasBotToken: Boolean(process.env.DISCORD_BOT_TOKEN),
+      hasGuildId: Boolean(process.env.DISCORD_GUILD_ID)
+    });
+
     const tokenRes = await axios.post(
       'https://discord.com/api/oauth2/token',
-      querystring.stringify({
+      new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri
-      }),
+      }).toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
@@ -58,6 +64,7 @@ module.exports = async (req, res) => {
     const botApiUrl = process.env.DISCORD_BOT_API_URL; // e.g. https://your-bot.example.com
     const internalSecret = process.env.INTERNAL_API_SECRET;
     if (botApiUrl && internalSecret) {
+      console.log('Discord callback using bot API add-member branch');
       try {
         const resp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
           userId: userRes.data?.id,
@@ -70,6 +77,7 @@ module.exports = async (req, res) => {
         console.warn('Bot API add-member failed:', err?.response?.data || err.message);
       }
     } else if (isDiscordConfigured()) {
+      console.log('Discord callback using direct Discord API add-member branch');
       const joinResult = await addMemberToGuild({
         userId: userRes.data?.id,
         accessToken
@@ -83,7 +91,8 @@ module.exports = async (req, res) => {
     }
 
     setSessionCookie(res, { user: userRes.data });
-    res.redirect('/');
+    res.status(302).setHeader('Location', '/');
+    return res.end();
   } catch (error) {
     console.error('Discord OAuth callback failed', error?.response?.data || error.message);
     res.status(500).send('OAuth callback failed');
