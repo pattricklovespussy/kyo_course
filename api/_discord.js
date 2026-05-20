@@ -13,12 +13,14 @@ async function addMemberToGuild({ userId, accessToken }) {
 
   try {
     await axios.put(
-      `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
-      { access_token: accessToken },
+      `https://discord.com/api/guilds/${guildId}/members/${userId}`,
+      {
+        access_token: accessToken,
+      },
       {
         headers: {
           Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         }
       }
     );
