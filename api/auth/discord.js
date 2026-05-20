@@ -12,7 +12,7 @@ module.exports = (req, res) => {
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'identify email'
+    scope: 'identify email guilds.join'
   });
 
   res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}`);

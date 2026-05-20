@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { sendChannelMessage } = require('./_discord');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -23,6 +24,16 @@ function normalizeBooking(row){
     slotKey: row?.slot_key || '',
     createdAt: row?.created_at || null
   };
+}
+
+function safeText(value, fallback = '-') {
+  const text = String(value == null ? '' : value).trim();
+  return text || fallback;
+}
+
+function formatUserTag(userId) {
+  const id = safeText(userId, '');
+  return id ? `<@${id}>` : 'N/A';
 }
 
 async function loadSchedule(){
@@ -131,7 +142,13 @@ module.exports = async (req, res) => {
         .select('*')
         .single();
       if (error) return res.status(500).json({ error: error.message || error });
-      return res.status(200).json({ booking: normalizeBooking(data) });
+
+      const booked = normalizeBooking(data);
+      await sendChannelMessage(
+        `✅ New booking\nUser: ${safeText(booked.userName)} (${formatUserTag(booked.userId)})\nCourse: ${safeText(booked.courseName)}\nSlot: day ${booked.day} - ${safeText(booked.time)}\nBooking ID: ${safeText(booked.id)}`
+      );
+
+      return res.status(200).json({ booking: booked });
     }
 
       if (req.method === 'DELETE') {
@@ -158,10 +175,15 @@ module.exports = async (req, res) => {
           .select('*')
           .single();
         if (delErr) return res.status(500).json({ error: delErr.message || delErr });
-        return res.status(200).json({ deleted: normalizeBooking(deleted) });
+        const canceled = normalizeBooking(deleted);
+        await sendChannelMessage(
+          `❌ Booking canceled\nUser: ${safeText(canceled.userName)} (${formatUserTag(canceled.userId)})\nCourse: ${safeText(canceled.courseName)}\nSlot: day ${canceled.day} - ${safeText(canceled.time)}\nBooking ID: ${safeText(canceled.id)}`
+        );
+
+        return res.status(200).json({ deleted: canceled });
       }
 
-    res.setHeader('Allow', 'GET, POST');
+    res.setHeader('Allow', 'GET, POST, DELETE');
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('api/bookings error', err);

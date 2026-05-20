@@ -1,5 +1,6 @@
 const axios = require('axios');
 const querystring = require('querystring');
+const { addMemberToGuild, isDiscordConfigured } = require('../../_discord');
 
 function setSessionCookie(res, payload) {
   const value = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -49,6 +50,17 @@ module.exports = async (req, res) => {
     const userRes = await axios.get('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
+
+    // Auto-join user into guild if bot and guild env vars are configured.
+    if (isDiscordConfigured()) {
+      const joinResult = await addMemberToGuild({
+        userId: userRes.data?.id,
+        accessToken
+      });
+      if (!joinResult.ok) {
+        console.warn('Discord guild join failed:', joinResult.reason);
+      }
+    }
 
     setSessionCookie(res, { user: userRes.data });
     res.redirect('/');

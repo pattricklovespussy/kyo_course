@@ -70,3 +70,33 @@ Nếu bạn muốn giới hạn chỉ một vài email, nên quản lý bằng u
 Mỗi lần học viên bấm giữ slot, ứng dụng sẽ ghi một dòng vào bảng `schedule_bookings` trên Supabase. Trang công khai đọc lại dữ liệu từ server để giảm số slot cho toàn bộ người dùng.
 
 Khi chạy `supabase.sql`, hãy tạo luôn bảng `schedule_bookings` cùng index và unique constraint trên `(user_id, slot_key)`.
+
+## Discord: auto add user + notify booking/cancel
+
+Backend da duoc noi vao Discord OAuth va API bookings de:
+
+- Tu dong them user vao Discord server ngay sau khi login thanh cong.
+- Gui tin nhan vao kenh thong bao khi user dat slot thanh cong.
+- Gui tin nhan vao kenh thong bao khi user huy slot thanh cong.
+
+### Bien moi truong can them
+
+```bash
+DISCORD_CLIENT_ID=your_discord_app_client_id
+DISCORD_CLIENT_SECRET=your_discord_app_client_secret
+DISCORD_REDIRECT_URI=https://your-domain.com/auth/discord/callback
+
+DISCORD_BOT_TOKEN=your_bot_token
+DISCORD_GUILD_ID=your_server_id
+DISCORD_NOTIFY_CHANNEL_ID=your_channel_id
+```
+
+### Discord Developer Portal can cau hinh
+
+1. Trong OAuth2, redirect URI phai trung voi `DISCORD_REDIRECT_URI`.
+2. Scope login can co: `identify email guilds.join`.
+3. Moi bot vao server va cap quyen toi thieu:
+	- Create Invite
+	- Manage Server (hoac quyen du de add member theo chinh sach server)
+	- Send Messages (o kenh notify)
+4. Bot phai co quyen nhin va gui tin nhan vao kenh co ID = `DISCORD_NOTIFY_CHANNEL_ID`.

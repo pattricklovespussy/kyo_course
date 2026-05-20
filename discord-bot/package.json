@@ -1,0 +1,19 @@
+{
+  "name": "tradingwithkyo-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord Bot + OAuth2 server cho TradingWithKyo Schedule Hub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "discord.js": "^14.15.3",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
