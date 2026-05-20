@@ -24,9 +24,11 @@ async function addMemberToGuild({ userId, accessToken }) {
     );
     return { ok: true };
   } catch (error) {
+    const raw = error?.response?.data || null;
     return {
       ok: false,
-      reason: error?.response?.data?.message || error.message || 'discord-join-failed'
+      reason: raw?.message || error.message || 'discord-join-failed',
+      raw
     };
   }
 }

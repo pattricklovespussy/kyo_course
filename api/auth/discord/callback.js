@@ -46,10 +46,12 @@ module.exports = async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
+    console.log('Discord token response:', tokenRes.data);
     const accessToken = tokenRes.data.access_token;
     const userRes = await axios.get('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
+    console.log('Discord user info:', userRes.data);
 
     // Auto-join user into guild if bot and guild env vars are configured.
     if (isDiscordConfigured()) {
@@ -59,6 +61,10 @@ module.exports = async (req, res) => {
       });
       if (!joinResult.ok) {
         console.warn('Discord guild join failed:', joinResult.reason);
+        // Expose more details for debugging when available
+        if (joinResult.raw) console.warn('Join raw response:', joinResult.raw);
+      } else {
+        console.log('User added to guild successfully');
       }
     }
 
