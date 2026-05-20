@@ -128,45 +128,46 @@ module.exports = async (req, res) => {
     const botApiUrl = process.env.DISCORD_BOT_API_URL;
     const internalSecret = process.env.INTERNAL_API_SECRET;
 
-    if (!botApiUrl || !internalSecret) {
-      console.warn('⚠️ DISCORD_BOT_API_URL or INTERNAL_API_SECRET is missing, cannot add member via bot API');
-      throw new Error('bot-api-not-configured');
-    }
-
-    console.log('Using bot API for add-member and send-dm only');
-
+    let joinStatus = 'skipped';
     let addedToGuild = false;
     let sentDM = false;
 
-    try {
-      const addResp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
-        userId,
-        accessToken,
-        secret: internalSecret
-      }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
+    if (!botApiUrl || !internalSecret) {
+      console.warn('⚠️ DISCORD_BOT_API_URL or INTERNAL_API_SECRET is missing, skipping add-member step');
+    } else {
+      console.log('Using bot API for add-member and send-dm only');
 
-      addedToGuild = addResp.data?.ok === true;
-      if (addedToGuild) {
-        console.log('✅ User added to guild via bot API');
-      } else {
-        console.warn('⚠️ Bot API add-member response:', addResp.data);
+      try {
+        const addResp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
+          userId,
+          accessToken,
+          secret: internalSecret
+        }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
+
+        addedToGuild = addResp.data?.ok === true;
+        joinStatus = addedToGuild ? 'joined' : 'failed';
+        if (addedToGuild) {
+          console.log('✅ User added to guild via bot API');
+        } else {
+          console.warn('⚠️ Bot API add-member response:', addResp.data);
+        }
+      } catch (err) {
+        joinStatus = 'failed';
+        console.warn('❌ Bot API add-member failed:', err?.response?.data || err.message);
       }
-    } catch (err) {
-      console.warn('❌ Bot API add-member failed:', err?.response?.data || err.message);
-      throw err;
+
+      if (userId) {
+        sentDM = await sendWelcomeDM(userId, username, botApiUrl, internalSecret);
+        if (sentDM) {
+          console.log('✅ Welcome DM sent via bot API');
+        } else {
+          console.warn('⚠️ Could not send DM via bot API');
+        }
+      }
     }
 
-    if (userId) {
-      sentDM = await sendWelcomeDM(userId, username, botApiUrl, internalSecret);
-      if (sentDM) {
-        console.log('✅ Welcome DM sent via bot API');
-      } else {
-        console.warn('⚠️ Could not send DM via bot API');
-      }
-    }
-
-    setSessionCookie(res, { user: userRes.data, discordAuthSaved: savedAuth.ok });
-    res.status(302).setHeader('Location', '/');
+    setSessionCookie(res, { user: userRes.data, discordAuthSaved: savedAuth.ok, discordJoinStatus: joinStatus });
+    res.status(302).setHeader('Location', `/?login=success&join=${joinStatus}`);
     return res.end();
   } catch (error) {
     console.error('Discord OAuth callback failed', error?.response?.data || error.message);
