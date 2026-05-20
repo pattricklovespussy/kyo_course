@@ -2,6 +2,8 @@
   "rewrites": [
     { "source": "/auth/discord", "destination": "/api/auth/discord" },
     { "source": "/auth/discord/callback", "destination": "/api/auth/discord/callback" },
+    { "source": "/course", "destination": "/courses.html" },
+    { "source": "/courses", "destination": "/courses.html" },
     { "source": "/me", "destination": "/api/me" },
     { "source": "/logout", "destination": "/api/logout" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
