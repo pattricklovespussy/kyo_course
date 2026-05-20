@@ -1,6 +1,19 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+function normalizeHttpUrl(value) {
+  const trimmed = String(value || '').trim().replace(/\/+$/, '');
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
+const SUPABASE_URL = normalizeHttpUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'schedule_state';
 const SUPABASE_RECORD_ID = process.env.SUPABASE_RECORD_ID || 'main';
