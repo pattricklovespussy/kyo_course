@@ -614,12 +614,11 @@ let COURSES=[];
 let SLOTS=[];
 
 const DAYS=['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
-const BASE=[19,20,21,22,23,24,25];
 const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TL={mp:'Market Profile',pa:'Price Action',cr:'Crypto',ps:'Tâm lý'};
 const LS={'Beginner':'BEG','Intermediate':'INT','Advanced':'ADV','All levels':'ALL'};
 
-let loggedIn=false,sel=null,weekOff=0,pendingBook=false,newest=true;
+let loggedIn=false,sel=null,weekOff=0,newest=true;
 let filters={topic:'all',level:'all',time:'all'};
 let profileOpen=false;
 let bookedCount=0;
@@ -1046,7 +1045,7 @@ function jumpToNext(){
   if(!next) return;
   sel={courseId:next.courseId,day:next.day,time:next.time};
   updateBar();render();
-  setTimeout(()=>{const g=document.querySelector('.cal-scroll');if(g)g.scrollLeft=g.scrollWidth/7*2;},80);
+  requestAnimationFrame(()=>{const g=document.querySelector('.cal-scroll'); if(g) g.scrollLeft = g.scrollWidth/7*2;});
 }
 function handleBook(){
   if (!sel) return;
@@ -1054,7 +1053,7 @@ function handleBook(){
   if (slot && isBookedSlot(slot)){
     return openConfirmCancel();
   }
-  if(!loggedIn){pendingBook=true;openLogin();}else doBook();
+  if(!loggedIn){ openLogin(); } else doBook();
 }
 
 function openConfirmCancel(){
@@ -1219,7 +1218,7 @@ async function loadUser(){
       document.getElementById('uAv').textContent = (u.username||'U')[0];
       const lb = document.getElementById('loginBtn'); if(lb) lb.style.display='none';
       document.body.classList.add('login-splash');
-      setTimeout(()=>document.body.classList.remove('login-splash'),1200);
+      setTimeout(()=>document.body.classList.remove('login-splash'),700);
       await refreshMyBookings();
       renderBookedCount(true);
     }
