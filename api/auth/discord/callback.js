@@ -1,7 +1,20 @@
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+function normalizeHttpUrl(value) {
+  const trimmed = String(value || '').trim().replace(/\/+$/, '');
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
+const SUPABASE_URL = normalizeHttpUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_DISCORD_USERS_TABLE = process.env.SUPABASE_DISCORD_USERS_TABLE || 'discord_users';
 const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
@@ -27,11 +40,13 @@ function setSessionCookie(res, payload) {
 
 // Helper: gửi DM cho user qua bot
 async function sendWelcomeDM(userId, username, botApiUrl, internalSecret) {
-  if (!botApiUrl || !internalSecret) {
+  const normalizedBotApiUrl = normalizeHttpUrl(botApiUrl);
+
+  if (!normalizedBotApiUrl || !internalSecret) {
     return false;
   }
   try {
-    const resp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/send-dm`, {
+    const resp = await axios.post(`${normalizedBotApiUrl}/internal/send-dm`, {
       userId,
       username,
       secret: internalSecret
@@ -125,7 +140,7 @@ module.exports = async (req, res) => {
 
     const userId = userRes.data?.id;
     const username = userRes.data?.username;
-    const botApiUrl = process.env.DISCORD_BOT_API_URL;
+    const botApiUrl = normalizeHttpUrl(process.env.DISCORD_BOT_API_URL);
     const internalSecret = process.env.INTERNAL_API_SECRET;
 
     let joinStatus = 'skipped';
