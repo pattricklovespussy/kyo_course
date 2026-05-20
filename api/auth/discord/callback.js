@@ -53,15 +53,29 @@ module.exports = async (req, res) => {
     });
     console.log('Discord user info:', userRes.data);
 
-    // Auto-join user into guild if bot and guild env vars are configured.
-    if (isDiscordConfigured()) {
+    // Auto-join user into guild:
+    // Prefer asking the running bot process to add the member if configured (more reliable).
+    const botApiUrl = process.env.DISCORD_BOT_API_URL; // e.g. https://your-bot.example.com
+    const internalSecret = process.env.INTERNAL_API_SECRET;
+    if (botApiUrl && internalSecret) {
+      try {
+        const resp = await axios.post(`${botApiUrl.replace(/\/$/, '')}/internal/add-member`, {
+          userId: userRes.data?.id,
+          accessToken,
+          secret: internalSecret
+        }, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 });
+        if (resp.data && resp.data.ok) console.log('User added to guild via bot API');
+        else console.warn('Bot API add-member response:', resp.data);
+      } catch (err) {
+        console.warn('Bot API add-member failed:', err?.response?.data || err.message);
+      }
+    } else if (isDiscordConfigured()) {
       const joinResult = await addMemberToGuild({
         userId: userRes.data?.id,
         accessToken
       });
       if (!joinResult.ok) {
         console.warn('Discord guild join failed:', joinResult.reason);
-        // Expose more details for debugging when available
         if (joinResult.raw) console.warn('Join raw response:', joinResult.raw);
       } else {
         console.log('User added to guild successfully');

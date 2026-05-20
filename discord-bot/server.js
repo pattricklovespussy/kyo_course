@@ -134,6 +134,28 @@ app.get('/callback', async (req, res) => {
   }
 });
 
+// Internal: allow API server to ask the bot to add a member to the guild.
+// Protect with an internal secret: set INTERNAL_API_SECRET in the bot env.
+app.post('/internal/add-member', async (req, res) => {
+  const secret = req.body?.secret || req.headers['x-internal-secret'];
+  if (!process.env.INTERNAL_API_SECRET || secret !== process.env.INTERNAL_API_SECRET) {
+    return res.status(403).json({ ok: false, message: 'forbidden' });
+  }
+
+  const userId = req.body?.userId;
+  const accessToken = req.body?.accessToken;
+  if (!userId || !accessToken) return res.status(400).json({ ok: false, message: 'missing userId or accessToken' });
+
+  try {
+    const guild = await bot.guilds.fetch(DISCORD_GUILD_ID);
+    await guild.members.add(userId, { accessToken });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('internal add-member failed:', err?.response?.data || err.message);
+    return res.status(500).json({ ok: false, message: err.message, raw: err?.response?.data || null });
+  }
+});
+
 // ── API: Lấy thông tin user hiện tại ─────────────────────────────────
 app.get('/me', (req, res) => {
   if (req.session.loggedIn && req.session.user) {
