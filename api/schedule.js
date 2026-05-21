@@ -67,6 +67,9 @@ module.exports = async (req, res) => {
         .limit(1)
         .single();
       if (error && error.code !== 'PGRST116') {
+        if (error.code === 'PGRST301' || error.status === 404) {
+          return res.status(200).json({ courses: [], sessions: [], updatedAt: Date.now() });
+        }
         return res.status(500).json({ error: error.message || error });
       }
       const payload = data?.payload || { courses: [], sessions: [] };

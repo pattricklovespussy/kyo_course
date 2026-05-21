@@ -131,6 +131,12 @@ module.exports = async (req, res) => {
     const botApiUrl = normalizeHttpUrl(process.env.DISCORD_BOT_API_URL);
     const internalSecret = process.env.INTERNAL_API_SECRET;
 
+    console.log('Discord callback add-member config:', {
+      botApiUrl: botApiUrl || '<missing>',
+      hasInternalSecret: Boolean(internalSecret),
+      userId: userId || '<missing>'
+    });
+
     let joinStatus = 'skipped';
     let addedToGuild = false;
     let sentDM = false;
@@ -156,7 +162,11 @@ module.exports = async (req, res) => {
         }
       } catch (err) {
         joinStatus = 'failed';
-        console.warn('❌ Bot API add-member failed:', err?.response?.data || err.message);
+        console.warn('❌ Bot API add-member failed:', {
+          status: err?.response?.status || null,
+          data: err?.response?.data || null,
+          message: err?.message || 'unknown-error'
+        });
       }
 
       if (userId) {

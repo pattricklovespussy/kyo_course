@@ -3,6 +3,23 @@ const session = require('express-session');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+const fs = require('fs');
+
+// DEBUG: print which .env is being loaded and whether key vars exist (temporary)
+try {
+  const envPath = path.join(__dirname, '.env');
+  const exists = fs.existsSync(envPath);
+  function masked(v) {
+    if (!v) return '<empty>';
+    if (v.length <= 8) return `${v.slice(0,2)}...${v.slice(-2)}`;
+    return `${v.slice(0,4)}...${v.slice(-4)}`;
+  }
+  console.log(`◇ dotenv path: ${envPath} // exists: ${exists} // injected env (0) from .env`);
+  console.log(`◇ vars: DISCORD_BOT_TOKEN=${masked(process.env.DISCORD_BOT_TOKEN)}, DISCORD_GUILD_ID=${masked(process.env.DISCORD_GUILD_ID)}, INTERNAL_API_SECRET=${masked(process.env.INTERNAL_API_SECRET)}`);
+} catch (e) {
+  console.warn('◇ dotenv debug failed:', e?.message || e);
+}
 
 const app = express();
 app.use(express.json());
@@ -56,10 +73,14 @@ function _handleReady() {
 bot.once('clientReady', _handleReady);
 bot.once('ready', _handleReady);
 
-bot.login(BOT_TOKEN).catch((err) => {
-  console.error('Discord bot login failed:', err?.message || err);
-  process.exitCode = 1;
-});
+if (BOT_TOKEN) {
+  bot.login(BOT_TOKEN).catch((err) => {
+    console.error('Discord bot login failed:', err?.message || err);
+    process.exitCode = 1;
+  });
+} else {
+  console.error('Discord bot login skipped because DISCORD_BOT_TOKEN is missing.');
+}
 
 // Helper: gửi DM cho user
 async function sendDM(userId, embed) {
@@ -73,14 +94,26 @@ async function sendDM(userId, embed) {
   }
 }
 
-// Helper: thêm user vào server
+// Helper: thêm user vào server bằng Discord REST trực tiếp
 async function addUserToGuild(accessToken, userId) {
   try {
-    const guild = await bot.guilds.fetch(DISCORD_GUILD_ID);
-    await guild.members.add(userId, { accessToken });
-    return true;
+    const url = `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${userId}`;
+    const response = await axios.put(url, {
+      access_token: accessToken
+    }, {
+      headers: {
+        Authorization: `Bot ${BOT_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 5000
+    });
+    return response.status === 201 || response.status === 204;
   } catch (err) {
-    console.error('Lỗi add member:', err.message);
+    console.error('Lỗi add member:', {
+      status: err?.response?.status || null,
+      data: err?.response?.data || null,
+      message: err?.message || 'unknown-error'
+    });
     return false;
   }
 }
@@ -164,8 +197,10 @@ app.post('/internal/add-member', async (req, res) => {
   if (!userId || !accessToken) return res.status(400).json({ ok: false, message: 'missing userId or accessToken' });
 
   try {
-    const guild = await bot.guilds.fetch(GUILD_ID);
-    await guild.members.add(userId, { accessToken });
+    const ok = await addUserToGuild(accessToken, userId);
+    if (!ok) {
+      return res.status(500).json({ ok: false, message: 'failed to add member' });
+    }
     return res.json({ ok: true });
   } catch (err) {
     console.error('internal add-member failed:', err?.response?.data || err.message);

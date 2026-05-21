@@ -1,7 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const cookieSession = require('cookie-session');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -87,7 +88,11 @@ async function readSchedule(){
       { method: 'GET', headers: { Accept: 'application/json' } }
     );
     if(!response.ok){
-      throw new Error(`Failed to read schedule: ${response.status}`);
+      if (response.status === 404) {
+        return normalizeSchedule(memorySchedule);
+      }
+      const text = await response.text().catch(() => '');
+      throw new Error(`Failed to read schedule: ${response.status} ${text}`);
     }
     const rows = await response.json();
     const payload = rows?.[0]?.payload || { courses: [], sessions: [] };
@@ -132,7 +137,7 @@ app.get('/auth/discord', (req, res) => {
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: DISCORD_REDIRECT_URI,
     response_type: 'code',
-    scope: 'identify email'
+    scope: 'identify email guilds.join'
   });
   res.redirect(`https://discord.com/api/oauth2/authorize?${params.toString()}`);
 });
@@ -147,6 +152,7 @@ app.get('/auth/discord/callback', async (req, res) => {
     params.append('grant_type', 'authorization_code');
     params.append('code', code);
     params.append('redirect_uri', DISCORD_REDIRECT_URI);
+    params.append('scope', 'identify email guilds.join');
 
     const tokenRes = await axios.post('https://discord.com/api/oauth2/token', params.toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
