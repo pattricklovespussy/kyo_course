@@ -1,19 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { sendChannelMessage } = require('./_discord');
-
-function normalizeHttpUrl(value) {
-  const trimmed = String(value || '').trim().replace(/\/+$/, '');
-  if (!trimmed) {
-    return '';
-  }
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
-}
+const { normalizeHttpUrl } = require('./_utils');
 
 const SUPABASE_URL = normalizeHttpUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -164,37 +152,37 @@ module.exports = async (req, res) => {
       return res.status(200).json({ booking: booked });
     }
 
-      if (req.method === 'DELETE') {
-        const id = String(req.query?.id || req.body?.id || '').trim();
-        const userId = String(req.query?.userId || req.body?.userId || '').trim();
-        if (!id || !userId) return res.status(400).json({ error: 'Missing id or userId' });
+    if (req.method === 'DELETE') {
+      const id = String(req.query?.id || req.body?.id || '').trim();
+      const userId = String(req.query?.userId || req.body?.userId || '').trim();
+      if (!id || !userId) return res.status(400).json({ error: 'Missing id or userId' });
 
-        // fetch booking
-        const { data: existing, error: fetchErr } = await supabase
-          .from(SUPABASE_BOOKINGS_TABLE)
-          .select('*')
-          .eq('id', id)
-          .limit(1)
-          .single();
-        if (fetchErr && fetchErr.code === 'PGRST116') return res.status(404).json({ error: 'Booking not found' });
-        if (fetchErr) return res.status(500).json({ error: fetchErr.message || fetchErr });
-        if (!existing) return res.status(404).json({ error: 'Booking not found' });
-        if (String(existing.user_id || '') !== userId) return res.status(403).json({ error: 'Not allowed to cancel this booking' });
+      // fetch booking
+      const { data: existing, error: fetchErr } = await supabase
+        .from(SUPABASE_BOOKINGS_TABLE)
+        .select('*')
+        .eq('id', id)
+        .limit(1)
+        .single();
+      if (fetchErr && fetchErr.code === 'PGRST116') return res.status(404).json({ error: 'Booking not found' });
+      if (fetchErr) return res.status(500).json({ error: fetchErr.message || fetchErr });
+      if (!existing) return res.status(404).json({ error: 'Booking not found' });
+      if (String(existing.user_id || '') !== userId) return res.status(403).json({ error: 'Not allowed to cancel this booking' });
 
-        const { data: deleted, error: delErr } = await supabase
-          .from(SUPABASE_BOOKINGS_TABLE)
-          .delete()
-          .eq('id', id)
-          .select('*')
-          .single();
-        if (delErr) return res.status(500).json({ error: delErr.message || delErr });
-        const canceled = normalizeBooking(deleted);
-        await sendChannelMessage(
-          `❌ Booking canceled\nUser: ${safeText(canceled.userName)} (${formatUserTag(canceled.userId)})\nCourse: ${safeText(canceled.courseName)}\nSlot: day ${canceled.day} - ${safeText(canceled.time)}\nBooking ID: ${safeText(canceled.id)}`
-        );
+      const { data: deleted, error: delErr } = await supabase
+        .from(SUPABASE_BOOKINGS_TABLE)
+        .delete()
+        .eq('id', id)
+        .select('*')
+        .single();
+      if (delErr) return res.status(500).json({ error: delErr.message || delErr });
+      const canceled = normalizeBooking(deleted);
+      await sendChannelMessage(
+        `❌ Booking canceled\nUser: ${safeText(canceled.userName)} (${formatUserTag(canceled.userId)})\nCourse: ${safeText(canceled.courseName)}\nSlot: day ${canceled.day} - ${safeText(canceled.time)}\nBooking ID: ${safeText(canceled.id)}`
+      );
 
-        return res.status(200).json({ deleted: canceled });
-      }
+      return res.status(200).json({ deleted: canceled });
+    }
 
     res.setHeader('Allow', 'GET, POST, DELETE');
     res.status(405).json({ error: 'Method not allowed' });

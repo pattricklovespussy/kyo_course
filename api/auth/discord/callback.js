@@ -1,18 +1,6 @@
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
-
-function normalizeHttpUrl(value) {
-  const trimmed = String(value || '').trim().replace(/\/+$/, '');
-  if (!trimmed) {
-    return '';
-  }
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
-}
+const { normalizeHttpUrl } = require('../../_utils');
 
 const SUPABASE_URL = normalizeHttpUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
