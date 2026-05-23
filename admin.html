@@ -3,23 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TradingWithKyo — Admin</title>
+<title>TradingWithKyo — Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
-  --bg:#0a0a0a;
-  --s1:#111;
-  --s2:#171717;
-  --s3:#1f1f1f;
-  --s4:#262626;
+  --bg:#0d0d0d;
+  --s1:#141414;
+  --s2:#1a1a1a;
+  --s3:#222;
+  --s4:#2a2a2a;
   --b1:rgba(255,255,255,0.05);
   --b2:rgba(255,255,255,0.09);
-  --b3:rgba(255,255,255,0.15);
+  --b3:rgba(255,255,255,0.14);
   --gold:#e8b84b;
   --gold2:#f5cf7a;
   --gold3:rgba(232,184,75,0.10);
-  --gold4:rgba(232,184,75,0.22);
+  --gold4:rgba(232,184,75,0.20);
   --tx:#efefef;
   --tx2:#888;
   --tx3:#444;
@@ -31,1134 +32,1215 @@
 html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:13px;line-height:1.5;}
 body{display:flex;flex-direction:column;min-height:100vh;}
 
+/* ── AUTH GATE ── */
+#authGate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+.auth-card{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:40px;width:100%;max-width:400px;text-align:center;}
+.auth-logo{width:48px;height:48px;background:var(--gold);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0d0d0d;margin:0 auto 20px;}
+.auth-card h1{font-size:20px;font-weight:900;letter-spacing:-0.5px;margin-bottom:6px;}
+.auth-card p{font-size:12px;color:var(--tx2);margin-bottom:24px;line-height:1.6;}
+.auth-sep{height:1px;background:var(--b1);margin:20px 0;}
+.inp-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.inp{width:100%;padding:10px 14px;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:13px;outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--gold);}
+.inp::placeholder{color:var(--tx3);}
+.btn-primary{width:100%;padding:11px;background:var(--gold);color:#0d0d0d;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.btn-primary:hover{background:var(--gold2);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.auth-err{font-size:11px;color:var(--red);text-align:center;min-height:16px;}
+
 /* ── HEADER ── */
-.adm-header{height:54px;background:var(--s1);border-bottom:1px solid var(--b2);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;position:sticky;top:0;z-index:200;}
+header{height:56px;background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;position:sticky;top:0;z-index:100;}
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--tx);}
-.lm{width:30px;height:30px;background:var(--gold);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#0d0d0d;}
+.lm{width:32px;height:32px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#0d0d0d;letter-spacing:-0.5px;}
 .logo-text{display:flex;flex-direction:column;line-height:1.15;}
-.logo-main{font-weight:800;font-size:13px;letter-spacing:-0.3px;}
-.logo-sub{font-size:9px;font-weight:600;color:var(--red);letter-spacing:0.4px;text-transform:uppercase;}
-.hdr-spacer{flex:1;}
-.hdr-actions{display:flex;gap:8px;align-items:center;}
-.btn-view{display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--s3);border:1px solid var(--b2);border-radius:7px;color:var(--tx2);font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;text-decoration:none;}
-.btn-view:hover{border-color:var(--b3);color:var(--tx);}
-.btn-save-all{display:flex;align-items:center;gap:6px;padding:7px 16px;background:var(--gold);border:none;border-radius:7px;color:#0d0d0d;font-size:11.5px;font-weight:800;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
-.btn-save-all:hover{background:var(--gold2);}
-.saved-toast{font-size:10.5px;color:var(--green);font-family:'JetBrains Mono',monospace;opacity:0;transition:opacity .3s;}
-.saved-toast.show{opacity:1;}
+.logo-main{font-weight:800;font-size:13.5px;letter-spacing:-0.3px;}
+.logo-sub{font-size:9.5px;font-weight:500;color:var(--tx3);letter-spacing:0.2px;}
+.admin-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;background:rgba(224,96,96,0.15);color:var(--red);border:1px solid rgba(224,96,96,0.3);padding:3px 9px;border-radius:4px;margin-left:4px;}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-stat{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2);}
+.hdr-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.btn-sm{padding:6px 14px;border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;border:1px solid var(--b2);background:var(--s2);color:var(--tx2);}
+.btn-sm:hover{color:var(--tx);border-color:var(--b3);}
+.btn-sm.danger:hover{border-color:rgba(224,96,96,0.4);color:var(--red);}
+a.btn-sm{text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
 
-/* ── LAYOUT ── */
-.adm-body{display:flex;flex:1;min-height:0;overflow:hidden;}
+/* ── MAIN ── */
+.page{display:flex;flex:1;min-height:0;}
 
-/* ── SIDEBAR NAV ── */
-.adm-nav{width:200px;background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;padding:14px 10px;gap:2px;flex-shrink:0;}
-.nav-section{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:var(--tx3);padding:8px 10px 4px;font-family:'JetBrains Mono',monospace;}
-.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer;transition:all .15s;border:none;background:transparent;width:100%;text-align:left;font-family:'Be Vietnam Pro',sans-serif;}
-.nav-item:hover{background:var(--s2);color:var(--tx);}
-.nav-item.act{background:var(--s3);color:var(--tx);border:1px solid var(--b2);}
+/* ── SIDEBAR ── */
+.side{width:240px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--b1);padding:16px 12px;display:flex;flex-direction:column;gap:4px;}
+.nav-section{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--tx3);padding:8px 10px 4px;font-family:'JetBrains Mono',monospace;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;user-select:none;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:var(--b1);color:var(--tx);}
+.nav-item.act{background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);}
 .nav-item .ni{font-size:14px;width:20px;text-align:center;}
-.nav-badge{margin-left:auto;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);padding:2px 6px;border-radius:99px;}
 
-/* ── MAIN CONTENT ── */
-.adm-main{flex:1;overflow-y:auto;padding:20px 24px;min-width:0;}
-.page{display:none;}
-.page.act{display:block;}
+/* ── CONTENT ── */
+.content{flex:1;min-width:0;overflow-y:auto;padding:24px;}
 
-/* ── PAGE HEADER ── */
-.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
-.page-hdr h1{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
-.page-hdr p{font-size:11px;color:var(--tx2);margin-top:2px;}
-.btn-add{display:flex;align-items:center;gap:6px;padding:9px 16px;background:var(--gold);border:none;border-radius:8px;color:#0d0d0d;font-size:12px;font-weight:800;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
-.btn-add:hover{background:var(--gold2);transform:translateY(-1px);}
+/* ── SECTION ── */
+.panel{display:none;}
+.panel.show{display:block;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.panel-head h1{font-size:18px;font-weight:900;letter-spacing:-0.5px;}
+.panel-head p{font-size:11.5px;color:var(--tx2);margin-top:3px;}
 
 /* ── STATS ROW ── */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-.stat-card{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;}
-.sc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
-.sc-val{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--gold2);letter-spacing:-1px;}
-.sc-sub{font-size:10px;color:var(--tx3);margin-top:3px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.stat-card{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;}
+.stat-card-n{font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--gold2);letter-spacing:-1px;}
+.stat-card-l{font-size:10px;color:var(--tx3);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;}
 
-/* ── COURSES TABLE ── */
-.table-wrap{background:var(--s1);border:1px solid var(--b1);border-radius:12px;overflow:hidden;}
-.tbl-hdr{display:grid;padding:10px 16px;border-bottom:1px solid var(--b1);gap:10px;}
-.tbl-hdr.courses-grid{grid-template-columns:1fr 80px 90px 90px 110px 110px;}
-.tbl-hdr span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
-.tbl-row{display:grid;padding:12px 16px;border-bottom:1px solid var(--b1);gap:10px;align-items:center;transition:background .12s;}
-.tbl-row:last-child{border-bottom:none;}
-.tbl-row:hover{background:var(--s2);}
-.tbl-row.courses-grid{grid-template-columns:1fr 80px 90px 90px 110px 110px;}
-.tr-name{font-size:12px;font-weight:700;color:var(--tx);}
-.tr-name .tr-id{display:block;font-size:9.5px;font-weight:500;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-top:1px;}
-.tr-cell{font-size:11px;color:var(--tx2);}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700;font-family:'JetBrains Mono',monospace;}
-.badge.mp{background:rgba(232,184,75,0.12);color:var(--gold2);}
-.badge.pa{background:rgba(91,141,239,0.12);color:var(--blue);}
-.badge.cr{background:rgba(77,184,122,0.10);color:var(--green);}
-.badge.ps{background:rgba(232,160,80,0.12);color:#e8a855;}
-.badge.beg{background:rgba(77,184,122,0.10);color:var(--green);}
-.badge.int{background:rgba(91,141,239,0.12);color:var(--blue);}
-.badge.adv{background:rgba(224,96,96,0.10);color:var(--red);}
-.badge.all{background:var(--s3);color:var(--tx2);}
-.tr-actions{display:flex;gap:6px;justify-content:flex-end;}
-.btn-edit,.btn-del{border:none;border-radius:6px;padding:5px 10px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
-.btn-edit{background:var(--s3);color:var(--tx2);border:1px solid var(--b2);}
+/* ── CARD ── */
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.card-head h2{font-size:13px;font-weight:700;}
+.card-body{padding:18px;}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-col{display:flex;flex-direction:column;gap:14px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
+.field input,.field select,.field textarea{padding:9px 12px;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:12.5px;outline:none;transition:border-color .15s;width:100%;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold);}
+.field select option{background:var(--s2);}
+.field textarea{resize:vertical;min-height:80px;}
+.field-hint{font-size:10px;color:var(--tx3);margin-top:2px;}
+
+/* ── SESSION BUILDER ── */
+.sessions-box{background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:12px;}
+.session-row{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+.session-row:last-child{margin-bottom:0;}
+.session-row select,.session-row input{padding:7px 10px;background:var(--bg);border:1px solid var(--b2);border-radius:6px;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:12px;outline:none;}
+.session-row select:focus,.session-row input:focus{border-color:var(--gold);}
+.btn-icon{width:28px;height:28px;background:none;border:1px solid var(--b2);border-radius:6px;color:var(--tx3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;flex-shrink:0;}
+.btn-icon:hover{border-color:rgba(224,96,96,0.4);color:var(--red);}
+.btn-add-session{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:none;border:1px dashed var(--b3);border-radius:6px;color:var(--tx3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;margin-top:8px;}
+.btn-add-session:hover{border-color:var(--gold4);color:var(--gold2);}
+
+/* ── FORM ACTIONS ── */
+.form-actions{display:flex;align-items:center;gap:10px;padding-top:4px;}
+.btn-upload{padding:10px 24px;background:var(--gold);color:#0d0d0d;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:7px;}
+.btn-upload:hover{background:var(--gold2);}
+.btn-upload:disabled{opacity:.4;cursor:not-allowed;}
+.btn-outline{padding:9px 20px;background:none;border:1px solid var(--b2);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;color:var(--tx2);transition:all .15s;}
+.btn-outline:hover{border-color:var(--b3);color:var(--tx);}
+.form-msg{font-size:11px;font-weight:600;padding:0 4px;}
+.form-msg.ok{color:var(--green);}
+.form-msg.err{color:var(--red);}
+
+/* ── COURSE TABLE ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{border-bottom:1px solid var(--b2);}
+th{padding:9px 12px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+td{padding:11px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--s2);}
+.tbl-name{font-weight:700;color:var(--tx);font-size:12.5px;}
+.tbl-id{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.badge{display:inline-flex;font-size:9px;font-weight:700;padding:2.5px 7px;border-radius:99px;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.badge.mp{background:rgba(232,184,75,0.12);color:var(--gold2);border:1px solid rgba(232,184,75,0.2);}
+.badge.pa{background:rgba(91,141,239,0.12);color:var(--blue);border:1px solid rgba(91,141,239,0.2);}
+.badge.cr{background:rgba(77,184,122,0.1);color:var(--green);border:1px solid rgba(77,184,122,0.2);}
+.badge.ps{background:rgba(232,160,85,0.1);color:#e8a855;border:1px solid rgba(232,160,85,0.2);}
+.badge.lock{background:rgba(224,96,96,0.1);color:var(--red);border:1px solid rgba(224,96,96,0.2);}
+.badge.open{background:rgba(77,184,122,0.1);color:var(--green);border:1px solid rgba(77,184,122,0.2);}
+.prog{height:4px;background:var(--s3);border-radius:99px;overflow:hidden;width:100px;}
+.prog-inner{height:100%;background:var(--gold);border-radius:99px;transition:width .3s;}
+.prog-inner.full{background:var(--red);}
+.tbl-actions{display:flex;align-items:center;gap:6px;}
+.btn-del{padding:5px 12px;background:none;border:1px solid rgba(224,96,96,0.25);border-radius:6px;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.btn-del:hover{background:rgba(224,96,96,0.1);}
+.btn-edit{padding:5px 12px;background:none;border:1px solid var(--b2);border-radius:6px;color:var(--tx2);font-size:11px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
 .btn-edit:hover{color:var(--tx);border-color:var(--b3);}
-.btn-del{background:rgba(224,96,96,0.08);color:var(--red);border:1px solid rgba(224,96,96,0.18);}
-.btn-del:hover{background:rgba(224,96,96,0.18);}
+.tbl-empty{text-align:center;color:var(--tx3);padding:40px;font-size:12px;line-height:1.8;}
+.tbl-loading{text-align:center;color:var(--tx3);padding:32px;font-size:11px;}
 
-/* ── SESSIONS TABLE ── */
-.tbl-hdr.sessions-grid{grid-template-columns:1fr 90px 70px 80px 80px 100px 100px;}
-.tbl-row.sessions-grid{grid-template-columns:1fr 90px 70px 80px 80px 100px 100px;}
-
-/* ── FORM / MODAL ── */
-.ov{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);align-items:center;justify-content:center;}
+/* ── MODAL ── */
+.ov{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);align-items:center;justify-content:center;}
 .ov.show{display:flex;}
-.modal{background:var(--s1);border:1px solid var(--b2);border-radius:14px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;animation:mfade .2s ease;}
-@keyframes mfade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.modal-hdr{padding:20px 22px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s1);z-index:1;}
-.modal-hdr h2{font-size:15px;font-weight:800;letter-spacing:-0.3px;}
-.mx{width:28px;height:28px;border-radius:7px;background:var(--s2);border:1px solid var(--b1);color:var(--tx3);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:14px;padding:28px;width:90%;max-width:400px;position:relative;animation:mfade .2s ease;}
+@keyframes mfade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.mx{position:absolute;top:12px;right:12px;width:26px;height:26px;border-radius:6px;background:var(--s2);border:1px solid var(--b1);color:var(--tx3);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .mx:hover{color:var(--tx);border-color:var(--b2);}
-.modal-body{padding:18px 22px;}
-.form-row{margin-bottom:14px;}
-.form-row label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
-.form-row input,.form-row select,.form-row textarea{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:12.5px;padding:10px 12px;transition:border-color .15s;outline:none;}
-.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--gold);}
-.form-row select option{background:var(--s2);}
-.form-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.form-cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-.modal-footer{padding:14px 22px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--s1);}
-.btn-cancel{padding:9px 18px;background:var(--s3);border:1px solid var(--b2);border-radius:8px;color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
-.btn-cancel:hover{color:var(--tx);}
-.btn-confirm{padding:9px 20px;background:var(--gold);border:none;border-radius:8px;color:#0d0d0d;font-size:12px;font-weight:800;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
-.btn-confirm:hover{background:var(--gold2);}
+.modal h2{font-size:17px;font-weight:900;letter-spacing:-0.4px;margin-bottom:6px;}
+.modal p{font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:18px;}
+.modal .scard{background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:10px 14px;margin-bottom:18px;}
+.modal .scard .sv{font-size:13px;font-weight:700;color:var(--gold2);}
+.modal .scard .sl{font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:3px;letter-spacing:.3px;text-transform:uppercase;}
+.modal-btns{display:flex;gap:8px;}
+.btn-danger{flex:1;padding:10px;border-radius:8px;background:var(--red);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.btn-danger:hover{background:#c84a4a;}
+.btn-cancel{flex:1;padding:10px;border-radius:8px;background:var(--s3);border:1px solid var(--b2);color:var(--tx);font-size:13px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
+.btn-cancel:hover{border-color:var(--b3);}
 
-/* Sessions sub-section */
-.sessions-section{margin-top:16px;border-top:1px solid var(--b1);padding-top:16px;}
-.sessions-section h3{font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px;font-family:'JetBrains Mono',monospace;}
-.session-item{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-.session-item .si-fields{display:flex;gap:8px;flex:1;flex-wrap:wrap;}
-.session-item .si-fields input,.session-item .si-fields select{flex:1;min-width:80px;background:var(--s3);border:1px solid var(--b2);border-radius:6px;color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:6px 9px;outline:none;}
-.session-item .si-fields input:focus,.session-item .si-fields select:focus{border-color:var(--gold);}
-.btn-rem-session{background:rgba(224,96,96,0.1);border:1px solid rgba(224,96,96,0.2);color:var(--red);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
-.btn-rem-session:hover{background:rgba(224,96,96,0.2);}
-.btn-add-session{display:flex;align-items:center;gap:5px;background:transparent;border:1px dashed var(--b2);border-radius:7px;color:var(--tx3);font-size:11px;font-weight:600;padding:8px 12px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;width:100%;justify-content:center;transition:all .15s;}
-.btn-add-session:hover{border-color:var(--gold);color:var(--gold);}
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{padding:12px 18px;border-radius:10px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:9px;box-shadow:0 8px 24px rgba(0,0,0,0.4);animation:tshow .25s ease;pointer-events:all;}
+.toast.ok{background:rgba(77,184,122,0.15);border:1px solid rgba(77,184,122,0.3);color:var(--green);}
+.toast.err{background:rgba(224,96,96,0.15);border:1px solid rgba(224,96,96,0.3);color:var(--red);}
+@keyframes tshow{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
-/* ── EMPTY STATE ── */
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 20px;color:var(--tx3);text-align:center;gap:10px;}
-.empty-state .em-icon{font-size:32px;margin-bottom:4px;}
-.empty-state h3{font-size:13px;font-weight:700;color:var(--tx2);}
-.empty-state p{font-size:11px;color:var(--tx3);max-width:280px;line-height:1.6;}
+/* ── TOGGLE ── */
+.toggle-wrap{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.toggle{width:38px;height:20px;background:var(--s3);border:1px solid var(--b2);border-radius:99px;position:relative;transition:background .15s;flex-shrink:0;}
+.toggle::after{content:'';position:absolute;left:3px;top:3px;width:12px;height:12px;background:var(--tx3);border-radius:50%;transition:all .15s;}
+.toggle.on{background:var(--gold3);border-color:var(--gold4);}
+.toggle.on::after{left:21px;background:var(--gold);}
+.toggle-label{font-size:12px;color:var(--tx2);font-weight:600;user-select:none;}
 
-/* ── STATS PAGE ── */
-.info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;}
-.info-card{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;}
-.info-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:10px;}
-.info-list-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--b1);font-size:11.5px;}
-.info-list-item:last-child{border-bottom:none;}
-.info-list-item .ili-key{color:var(--tx2);}
-.info-list-item .ili-val{font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--gold2);}
+/* ── BOOKINGS TABLE ── */
+.booking-meta{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
+.verify-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:99px;font-size:9.5px;font-weight:700;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.3px;}
+.verify-badge.pending{background:rgba(232,184,75,0.12);border:1px solid rgba(232,184,75,0.25);color:var(--gold2);}
+.verify-badge.approved{background:rgba(77,184,122,0.12);border:1px solid rgba(77,184,122,0.25);color:var(--green);}
+.verify-badge.rejected{background:rgba(224,96,96,0.12);border:1px solid rgba(224,96,96,0.25);color:var(--red);}
+.uid-actions{display:flex;align-items:center;gap:6px;}
 
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar{width:6px;height:6px;}
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px;}
-::-webkit-scrollbar-thumb:hover{background:var(--b3);}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:99px;}
 
-/* ── DELETE CONFIRM ── */
-.del-modal{max-width:360px;text-align:center;padding:28px 24px;}
-.del-icon{font-size:36px;margin-bottom:12px;}
-.del-modal h2{font-size:16px;font-weight:800;margin-bottom:6px;}
-.del-modal p{font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:18px;}
-.btn-del-confirm{padding:10px 20px;background:var(--red);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .15s;}
-.btn-del-confirm:hover{background:#c84f4f;}
-
-/* ── AUTH GATE ── */
-.auth-gate{position:fixed;inset:0;z-index:999;background:radial-gradient(circle at top, rgba(232,184,75,0.10), transparent 32%), rgba(10,10,10,0.98);display:flex;align-items:center;justify-content:center;padding:18px;}
-.auth-gate.hide{display:none;}
-.auth-card{width:100%;max-width:420px;background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.45);}
-.auth-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:99px;background:var(--gold3);border:1px solid var(--gold4);color:var(--gold2);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;font-family:'JetBrains Mono',monospace;margin-bottom:14px;}
-.auth-card h1{font-size:24px;line-height:1.1;letter-spacing:-0.6px;margin-bottom:8px;}
-.auth-card p{font-size:12.5px;color:var(--tx2);line-height:1.6;margin-bottom:18px;}
-.auth-card .form-row{margin-bottom:14px;}
-.auth-card input{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);font-family:'Be Vietnam Pro',sans-serif;font-size:13px;padding:11px 12px;outline:none;}
-.auth-card input:focus{border-color:var(--gold);}
-.auth-actions{display:flex;gap:10px;align-items:center;margin-top:10px;}
-.auth-actions .btn-confirm,.auth-actions .btn-cancel{flex:1;justify-content:center;display:inline-flex;align-items:center;}
-.auth-note{margin-top:14px;font-size:11px;line-height:1.6;color:var(--tx3);font-family:'JetBrains Mono',monospace;}
-.auth-note.err{color:var(--red);} 
-
-/* ── PUBLISH TOGGLE ── */
-.pub-toggle{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:9px;margin-bottom:20px;}
-.pub-toggle p{flex:1;font-size:11.5px;color:var(--tx2);line-height:1.5;}
-.toggle-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.toggle-wrap label{font-size:11px;font-weight:700;color:var(--tx2);}
-.toggle{position:relative;display:inline-block;width:40px;height:22px;}
-.toggle input{opacity:0;width:0;height:0;}
-.slider{position:absolute;inset:0;background:var(--s4);border-radius:99px;cursor:pointer;transition:.25s;}
-.slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--tx3);border-radius:50%;transition:.25s;}
-input:checked + .slider{background:var(--green);}
-input:checked + .slider:before{transform:translateX(18px);background:#fff;}
+/* ── SETUP INFO ── */
+.setup-info{background:rgba(91,141,239,0.06);border:1px solid rgba(91,141,239,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:12px;color:var(--tx2);line-height:1.7;}
+.setup-info strong{color:var(--blue);}
+.setup-info code{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:var(--s3);padding:1px 6px;border-radius:4px;color:var(--gold2);}
 </style>
 </head>
 <body>
 
-<div class="auth-gate" id="authGate">
+<!-- AUTH GATE -->
+<div id="authGate">
   <div class="auth-card">
-    <div class="auth-badge">Supabase Auth</div>
-    <h1>Đăng nhập Admin</h1>
-    <p>Chỉ tài khoản được tạo trong Supabase Auth mới vào được trang quản trị.</p>
-    <div class="form-row">
-      <label>Email</label>
-      <input type="email" id="adminEmail" placeholder="admin@yourdomain.com" autocomplete="email">
+    <div class="auth-logo">K</div>
+    <h1>Admin Panel</h1>
+    <p>Đăng nhập để quản lý khóa học và lịch học trên TradingWithKyo.</p>
+    <div class="auth-sep"></div>
+    <div class="inp-wrap">
+        <input class="inp" type="email" id="emailInput" placeholder="Nhập email..." autocomplete="email">
+        <input class="inp" type="password" id="pwInput" placeholder="Nhập mật khẩu ..." autocomplete="current-password">
     </div>
-    <div class="form-row">
-      <label>Mật khẩu</label>
-      <input type="password" id="adminPassword" placeholder="••••••••" autocomplete="current-password">
+      <button class="btn-primary" id="pwBtn" onclick="doAuth()">Đăng nhập Quản Lý </button>
+    <div class="auth-err" id="pwErr"></div>
+    <div style="font-size:10px;color:var(--tx3);margin-top:16px;font-family:'JetBrains Mono',monospace;">
+      Supabase: <span id="sbStatus" style="color:var(--tx3);">chưa kết nối</span>
     </div>
-    <div class="auth-actions">
-      <button class="btn-confirm" id="adminLoginBtn" type="button">Đăng nhập</button>
-      <button class="btn-cancel" id="adminLogoutBtn" type="button">Đăng xuất</button>
-    </div>
-    <div class="auth-note" id="authNote">Auth được quản lý hoàn toàn bởi Supabase. Không có danh sách tài khoản tự viết trong frontend.</div>
   </div>
 </div>
 
-<script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-  window.__supabaseCreateClient = createClient;
-</script>
+<!-- MAIN APP -->
+<div id="app" style="display:none;flex-direction:column;min-height:100vh;">
 
-<!-- HEADER -->
-<header class="adm-header">
-  <a href="#" class="logo">
-    <div class="lm">K</div>
-    <div class="logo-text">
-      <span class="logo-main">TradingWithKyo</span>
-      <span class="logo-sub">Admin Panel</span>
-    </div>
-  </a>
-  <div class="hdr-spacer"></div>
-  <div class="hdr-actions">
-    <span class="saved-toast" id="savedToast">✓ Đã lưu</span>
-    <a href="index.html" class="btn-view" target="_blank">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Xem trang công khai
+  <header>
+    <a href="/" class="logo">
+      <div class="lm">K</div>
+      <div class="logo-text">
+        <div class="logo-main">TradingWithKyo</div>
+        <div class="logo-sub">Schedule Hub</div>
+      </div>
     </a>
-    <button class="btn-save-all" onclick="saveAll()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-      Lưu tất cả
-    </button>
-  </div>
-</header>
-
-<div class="adm-body">
-  <!-- SIDEBAR NAV -->
-  <nav class="adm-nav">
-    <span class="nav-section">Quản lý</span>
-    <button class="nav-item act" onclick="showPage('courses')" data-page="courses">
-      <span class="ni">📚</span> Khóa học
-      <span class="nav-badge" id="nb-courses">0</span>
-    </button>
-    <button class="nav-item" onclick="showPage('sessions')" data-page="sessions">
-      <span class="ni">📅</span> Buổi học
-      <span class="nav-badge" id="nb-sessions">0</span>
-    </button>
-    <span class="nav-section">Hệ thống</span>
-    <button class="nav-item" onclick="showPage('stats')" data-page="stats">
-      <span class="ni">📊</span> Thống kê
-    </button>
-    <button class="nav-item" onclick="showPage('settings')" data-page="settings">
-      <span class="ni">⚙️</span> Cài đặt
-    </button>
-  </nav>
-
-  <!-- MAIN CONTENT -->
-  <main class="adm-main">
-
-    <!-- PAGE: COURSES -->
-    <div class="page act" id="page-courses">
-      <div class="page-hdr">
-        <div>
-          <h1>Khóa học</h1>
-          <p>Quản lý danh sách khóa học hiển thị trên lịch công khai</p>
-        </div>
-        <button class="btn-add" onclick="openAddCourse()">+ Thêm khóa học</button>
-      </div>
-      <div class="stats-row" id="courses-stats-row"></div>
-      <div class="table-wrap">
-        <div class="tbl-hdr courses-grid">
-          <span>Tên khóa học</span>
-          <span>Chủ đề</span>
-          <span>Level</span>
-          <span>Slots</span>
-          <span>Trạng thái</span>
-          <span style="text-align:right">Thao tác</span>
-        </div>
-        <div id="courses-list"></div>
-      </div>
+    <span class="admin-badge">Admin</span>
+    <div class="hdr-r">
+      <div class="hdr-stat"><div class="hdr-dot"></div><span id="hdrConn">Đang kết nối…</span></div>
+      <a href="/" class="btn-sm">← Về trang chủ</a>
+      <button class="btn-sm danger" onclick="logout()">Đăng xuất</button>
     </div>
+  </header>
 
-    <!-- PAGE: SESSIONS -->
-    <div class="page" id="page-sessions">
-      <div class="page-hdr">
-        <div>
-          <h1>Buổi học</h1>
-          <p>Tất cả lịch học theo khung giờ từ các khóa học</p>
-        </div>
-        <button class="btn-add" onclick="openAddSession()">+ Thêm buổi học</button>
-      </div>
-      <div class="table-wrap">
-        <div class="tbl-hdr sessions-grid">
-          <span>Tên buổi học</span>
-          <span>Khóa học</span>
-          <span>Thứ</span>
-          <span>Giờ</span>
-          <span>Chủ đề</span>
-          <span>Số chỗ</span>
-          <span style="text-align:right">Thao tác</span>
-        </div>
-        <div id="sessions-list"></div>
-      </div>
-    </div>
+  <div class="page">
+    <!-- SIDEBAR NAV -->
+    <nav class="side">
+      <div class="nav-section">Dashboard</div>
+      <button class="nav-item act" onclick="showPanel('dashboard')"><span class="ni">📊</span>Tổng quan</button>
+      <div class="nav-section" style="margin-top:8px;">Quản lý</div>
+      <button class="nav-item" onclick="showPanel('upload')"><span class="ni">➕</span>Upload khóa học</button>
+      <button class="nav-item" onclick="showPanel('courses')"><span class="ni">📚</span>Danh sách khóa học</button>
+      <button class="nav-item" onclick="showPanel('bookings')"><span class="ni">📋</span>Đặt lịch</button>
+      <button class="nav-item" onclick="showPanel('verification')"><span class="ni">🛂</span>Xác thực</button>
+    </nav>
 
-    <!-- PAGE: STATS -->
-    <div class="page" id="page-stats">
-      <div class="page-hdr">
-        <div><h1>Thống kê</h1><p>Tổng quan dữ liệu lịch học</p></div>
-      </div>
-      <div class="stats-row" id="stats-row"></div>
-      <div class="info-grid" id="info-grid"></div>
-    </div>
+    <!-- CONTENT -->
+    <main class="content">
 
-    <!-- PAGE: SETTINGS -->
-    <div class="page" id="page-settings">
-      <div class="page-hdr">
-        <div><h1>Cài đặt</h1><p>Tuỳ chỉnh hệ thống lịch học</p></div>
-      </div>
-      <div class="pub-toggle">
-        <div>
-          <p><strong>Chế độ dữ liệu</strong><br>Dữ liệu đang được đồng bộ qua API <code>/api/schedule</code> và lưu lên Supabase ở backend. localStorage chỉ là cache dự phòng trên máy này.</p>
+      <!-- DASHBOARD -->
+      <div class="panel show" id="pDashboard">
+        <div class="panel-head">
+          <div>
+            <h1>Tổng quan</h1>
+            <p>Dữ liệu thời gian thực từ Dữ Liệu</p>
+          </div>
+          <button class="btn-sm" onclick="refreshAll()">🔄 Refresh</button>
         </div>
-      </div>
-      <div class="table-wrap">
-        <div style="padding:16px 18px;border-bottom:1px solid var(--b1);">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:12px;">Quản lý dữ liệu</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn-edit" style="padding:9px 16px;font-size:12px;" onclick="exportData()">⬇ Export JSON</button>
-            <button class="btn-edit" style="padding:9px 16px;font-size:12px;" onclick="document.getElementById('importFile').click()">⬆ Import JSON</button>
-            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-            <button class="btn-del" style="padding:9px 16px;font-size:12px;" onclick="confirmResetAll()">🗑 Reset toàn bộ dữ liệu</button>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-card-n" id="statCourses">—</div>
+            <div class="stat-card-l">Khóa học</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-n" id="statSlots">—</div>
+            <div class="stat-card-l">Slot trống</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-n" id="statBookings">—</div>
+            <div class="stat-card-l">Đặt lịch</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-n" id="statSessions">—</div>
+            <div class="stat-card-l">Buổi học</div>
           </div>
         </div>
-        <div style="padding:16px 18px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-bottom:10px;">Thống kê lưu trữ</div>
-          <div id="storage-info" style="font-size:11.5px;color:var(--tx2);font-family:'JetBrains Mono',monospace;line-height:2;"></div>
+        <div class="card">
+          <div class="card-head"><h2>Khóa học mới nhất</h2></div>
+          <div class="card-body">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th>Khóa học</th><th>Chủ đề</th><th>Level</th><th>Slots</th><th>Trạng thái</th>
+                </tr></thead>
+                <tbody id="dashTbl"><tr><td colspan="5" class="tbl-loading">Đang tải…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-  </main>
+      <!-- UPLOAD -->
+      <div class="panel" id="pUpload">
+        <div class="panel-head">
+          <div>
+            <h1>Upload khóa học mới</h1>
+            <p>Thêm khóa học vào Dữ liệu — sẽ hiển thị ngay trên trang chính</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Thông tin khóa học</h2></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-col">
+                <div class="field">
+                  <label>Tên khóa học *</label>
+                  <input type="text" id="fName" placeholder="VD: Price Action Masterclass" />
+                </div>
+                <div class="field">
+                  <label>Chủ đề *</label>
+                  <select id="fTopic">
+                    <option value="mp">Market Profile</option>
+                    <option value="pa">Price Action</option>
+                    <option value="cr">Crypto</option>
+                    <option value="ps">Tâm lý giao dịch</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Level *</label>
+                  <select id="fLevel">
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="All levels">All levels</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-col">
+                <div class="field">
+                  <label>Tổng số slot *</label>
+                  <input type="number" id="fTotal" value="10" min="1" max="999" />
+                  <span class="field-hint">Số học viên tối đa có thể đăng ký</span>
+                </div>
+                <div class="field">
+                  <label>Slot đã dùng</label>
+                  <input type="number" id="fUsed" value="0" min="0" />
+                  <span class="field-hint">Số slot đã được đăng ký (mặc định: 0)</span>
+                </div>
+                <div class="field">
+                  <label style="cursor:pointer;" onclick="toggleLock()">
+                    <div class="toggle-wrap">
+                      <div class="toggle" id="lockToggle"></div>
+                      <span class="toggle-label">Khoá đăng ký (locked)</span>
+                    </div>
+                  </label>
+                  <span class="field-hint">Khi bật, user không thể đăng ký slot này</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;">
+              <div class="field">
+                <label>Buổi học (Sessions) *</label>
+                <div class="sessions-box" id="sessionsBox">
+                  <!-- rows inserted by JS -->
+                </div>
+                <button class="btn-add-session" onclick="addSession()">+ Thêm buổi</button>
+              </div>
+            </div>
+
+            <div class="form-actions" style="margin-top:20px;">
+              <button class="btn-upload" onclick="uploadCourse()">
+                <span>⬆</span> Upload khóa học
+              </button>
+              <button class="btn-outline" onclick="resetForm()">Reset</button>
+              <span class="form-msg" id="uploadMsg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COURSES LIST -->
+      <div class="panel" id="pCourses">
+        <div class="panel-head">
+          <div>
+            <h1>Danh sách khóa học</h1>
+            <p>Quản lý và xoá khóa học — thay đổi phản ánh ngay trên index.html</p>
+          </div>
+          <button class="btn-sm" onclick="loadCourses()">🔄 Refresh</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th>Khóa học</th><th>Chủ đề / Level</th><th>Slot</th><th>Buổi</th><th>Trạng thái</th><th>Thao tác</th>
+                </tr></thead>
+                <tbody id="coursesTbl"><tr><td colspan="6" class="tbl-loading">Đang tải…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOOKINGS -->
+      <div class="panel" id="pBookings">
+        <div class="panel-head">
+          <div>
+            <h1>Đặt lịch</h1>
+            <p>Tất cả đặt lịch của học viên từ Dữ liệu</p>
+          </div>
+          <button class="btn-sm" onclick="loadBookings()">🔄 Refresh</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th>Học viên</th><th>Discord ID</th><th>Khóa học</th><th>Ngày / Giờ</th><th>Thời gian đăng ký</th><th>Thao tác</th>
+                </tr></thead>
+                <tbody id="bookingsTbl"><tr><td colspan="6" class="tbl-loading">Đang tải…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UID VERIFICATION -->
+      <div class="panel" id="pVerification">
+        <div class="panel-head">
+          <div>
+            <h1>Xác thực</h1>
+            <p>Xem UID học viên gửi lên và chọn xác thực hoặc không xác thực</p>
+          </div>
+          <button class="btn-sm" onclick="loadVerifications()">🔄 Refresh</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th>Học viên</th><th>Discord ID</th><th>UID gửi lên</th><th>Trạng thái</th><th>Thời gian gửi</th><th>Thao tác</th>
+                </tr></thead>
+                <tbody id="verificationsTbl"><tr><td colspan="6" class="tbl-loading">Đang tải…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
 </div>
 
-<!-- MODAL: Add/Edit Course -->
-<div class="ov" id="courseModal" onclick="if(event.target===this)closeCourseModal()">
+<!-- Modal: Xác nhận xoá -->
+<div class="ov" id="delOv" onclick="if(event.target===this)closeDelModal()">
   <div class="modal">
-    <div class="modal-hdr">
-      <h2 id="courseModalTitle">Thêm khóa học mới</h2>
-      <button class="mx" onclick="closeCourseModal()">✕</button>
+    <button class="mx" onclick="closeDelModal()">✕</button>
+    <div style="font-size:36px;text-align:center;margin-bottom:12px;">🗑️</div>
+    <h2 style="text-align:center;">Xoá khóa học</h2>
+    <p style="text-align:center;">Hành động không thể hoàn tác. Tất cả buổi học thuộc khóa này sẽ bị xoá.</p>
+    <div class="scard">
+      <div class="sl">Khóa học sẽ xoá</div>
+      <div class="sv" id="delName">—</div>
     </div>
-    <div class="modal-body">
-      <input type="hidden" id="c-editId">
-      <div class="form-row">
-        <label>Tên khóa học *</label>
-        <input type="text" id="c-name" placeholder="VD: Market Profile Foundation">
-      </div>
-      <div class="form-cols">
-        <div class="form-row">
-          <label>ID (mã khóa) *</label>
-          <input type="text" id="c-id" placeholder="VD: mkt" style="font-family:'JetBrains Mono',monospace;">
-        </div>
-        <div class="form-row">
-          <label>Chủ đề *</label>
-          <select id="c-topic">
-            <option value="mp">Market Profile</option>
-            <option value="pa">Price Action</option>
-            <option value="cr">Crypto</option>
-            <option value="ps">Tâm lý</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-cols">
-        <div class="form-row">
-          <label>Level *</label>
-          <select id="c-level">
-            <option value="Beginner">Beginner</option>
-            <option value="Intermediate">Intermediate</option>
-            <option value="Advanced">Advanced</option>
-            <option value="All levels">All levels</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Tổng số slot *</label>
-          <input type="number" id="c-total" placeholder="20" min="1" max="999">
-        </div>
-      </div>
-      <div class="form-row">
-        <label>Số slot đã dùng</label>
-        <input type="number" id="c-used" placeholder="0" min="0">
-      </div>
-      <div class="form-row">
-        <label>Khoá đăng ký</label>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <label style="font-size:12px;color:var(--tx2);">Khi khoá, người dùng sẽ không thể đăng ký khóa này</label>
-          <input type="checkbox" id="c-locked" style="width:18px;height:18px;margin-left:auto;">
-        </div>
-      </div>
-
-      <!-- Sessions sub-section -->
-      <div class="sessions-section">
-        <h3>Lịch học (buổi học trong tuần)</h3>
-        <div id="c-sessions-list"></div>
-        <button class="btn-add-session" type="button" onclick="addSessionRow()">+ Thêm buổi trong tuần</button>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeCourseModal()">Hủy</button>
-      <button class="btn-confirm" onclick="saveCourse()">Lưu khóa học</button>
+    <div class="modal-btns">
+      <button class="btn-danger" id="delConfirmBtn">Xoá ngay</button>
+      <button class="btn-cancel" onclick="closeDelModal()">Huỷ bỏ</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: Add/Edit Standalone Session -->
-<div class="ov" id="sessionModal" onclick="if(event.target===this)closeSessionModal()">
-  <div class="modal">
-    <div class="modal-hdr">
-      <h2 id="sessionModalTitle">Thêm buổi học</h2>
-      <button class="mx" onclick="closeSessionModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="s-editIdx">
-      <div class="form-row">
-        <label>Khóa học *</label>
-        <select id="s-courseId"></select>
-      </div>
-      <div class="form-row">
-        <label>Nhãn buổi học *</label>
-        <input type="text" id="s-label" placeholder="VD: Market Profile Foundation">
-      </div>
-      <div class="form-cols">
-        <div class="form-row">
-          <label>Thứ *</label>
-          <select id="s-day">
-            <option value="1">Thứ 2</option>
-            <option value="2">Thứ 3</option>
-            <option value="3">Thứ 4</option>
-            <option value="4">Thứ 5</option>
-            <option value="5">Thứ 6</option>
-            <option value="6">Thứ 7</option>
-            <option value="7">Chủ nhật</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Giờ học *</label>
-          <input type="text" id="s-time" placeholder="22:00" style="font-family:'JetBrains Mono',monospace;">
-        </div>
-      </div>
-      <div class="form-row">
-        <label>Đầy slot (forceFull)</label>
-        <select id="s-forceFull">
-          <option value="0">Không</option>
-          <option value="1">Đã đầy</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeSessionModal()">Hủy</button>
-      <button class="btn-confirm" onclick="saveSession()">Lưu buổi học</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Delete confirm -->
-<div class="ov" id="delModal" onclick="if(event.target===this)closeDelModal()">
-  <div class="modal">
-    <div class="del-modal">
-      <div class="del-icon">🗑️</div>
-      <h2 id="delTitle">Xóa khóa học?</h2>
-      <p id="delMsg">Hành động này không thể hoàn tác. Tất cả buổi học liên quan cũng sẽ bị xóa.</p>
-      <div style="display:flex;gap:10px;justify-content:center;">
-        <button class="btn-cancel" onclick="closeDelModal()">Hủy</button>
-        <button class="btn-del-confirm" id="delConfirmBtn">Xóa</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Session Bookings -->
-<div class="ov" id="sessionBookingsModal" onclick="if(event.target===this)closeSessionBookings()">
-  <div class="modal">
-    <div class="modal-hdr">
-      <h2>Danh sách đăng ký</h2>
-      <button class="mx" onclick="closeSessionBookings()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="margin-bottom:8px;color:var(--tx2);">Buổi: <strong id="sb-course-name">—</strong> · <span id="sb-day">—</span> · <span id="sb-time">—</span></div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-        <button class="btn-edit" id="sb-retry">Tải lại</button>
-        <button class="btn-edit" id="sb-show-course">Hiện tất cả đăng ký của khóa</button>
-        <div style="flex:1"></div>
-        <div id="sb-info" style="font-size:12px;color:var(--tx3)"></div>
-      </div>
-      <div id="sb-list">Đang tải…</div>
-      <pre id="sb-raw" style="display:none;background:var(--s2);border:1px solid var(--b1);padding:8px;margin-top:8px;color:var(--tx3);font-family:JetBrains Mono,monospace;white-space:pre-wrap;max-height:240px;overflow:auto;"></pre>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeSessionBookings()">Đóng</button>
-    </div>
-  </div>
-</div>
+<!-- Toast container -->
+<div class="toast-wrap" id="toasts"></div>
 
 <script>
-const DB_KEY = 'kyo_admin_db';
-const SUPABASE_URL = 'https://awjpizofhzsxqolbudem.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_1buODaj-vtBp-R1gpzwR4w_EWKNChgo';
-const TOPIC_LABELS = {mp:'Market Profile',pa:'Price Action',cr:'Crypto',ps:'Tâm lý'};
-const TOPIC_CLS = {mp:'mp',pa:'pa',cr:'cr',ps:'ps'};
-const LEVEL_CLS = {Beginner:'beg',Intermediate:'int',Advanced:'adv','All levels':'all'};
-const DAY_LABELS = {1:'Thứ 2',2:'Thứ 3',3:'Thứ 4',4:'Thứ 5',5:'Thứ 6',6:'Thứ 7',7:'Chủ nhật'};
+// ──────────────────────────────────────────────
+//  CONFIG — đặt biến từ file .env của bạn
+//  Hoặc server inject vào window trước khi load
+// ──────────────────────────────────────────────
+const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://awjpizofhzsxqolbudem.supabase.co';
+const SUPABASE_ANON = window.__SUPABASE_ANON || 'sb_publishable_1buODaj-vtBp-R1gpzwR4w_EWKNChgo';
 
-// ── DATABASE ──
-let db = {courses:[], sessions:[]};
-let supabaseClient = null;
-let adminAuthed = false;
-
-function setAuthNote(message, isError=false){
-  const note = document.getElementById('authNote');
-  if(!note) return;
-  note.textContent = message;
-  note.classList.toggle('err', Boolean(isError));
-}
-
-function showAuthGate(show=true){
-  const gate = document.getElementById('authGate');
-  if(!gate) return;
-  gate.classList.toggle('hide', !show);
-}
-
-function waitForSupabaseFactory(timeoutMs = 5000){
-  return new Promise((resolve, reject)=>{
-    const started = Date.now();
-    const poll = ()=>{
-      if(window.__supabaseCreateClient) return resolve(window.__supabaseCreateClient);
-      if(Date.now() - started >= timeoutMs) return reject(new Error('Supabase client chưa tải xong'));
-      setTimeout(poll, 50);
-    };
-    poll();
-  });
-}
-
-async function ensureSupabaseClient(){
-  if(supabaseClient) return supabaseClient;
-  const createClient = await waitForSupabaseFactory();
-  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  return supabaseClient;
-}
-
-async function syncAuthState(session){
-  adminAuthed = Boolean(session?.user);
-  showAuthGate(!adminAuthed);
-  if(adminAuthed){
-    setAuthNote('Đã đăng nhập. Đang tải dữ liệu admin...');
-    await loadDB();
-    updateBadges();
-    renderCourses();
-    setAuthNote('Đăng nhập thành công.');
-  }
-}
-
-async function signInAdmin(){
-  const email = document.getElementById('adminEmail')?.value.trim();
-  const password = document.getElementById('adminPassword')?.value;
-  if(!email || !password){
-    setAuthNote('Vui lòng nhập email và mật khẩu.', true);
-    return;
-  }
+// ──────────────────────────────────────────────
+//  SUPABASE CLIENT
+// ──────────────────────────────────────────────
+let sb = null;
+let currentSchedule = { courses: [], sessions: [], updatedAt: null };
+function initSupabase(){
   try{
-    const client = await ensureSupabaseClient();
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
-    if(error) throw error;
-    await syncAuthState(data?.session || null);
-  }catch(err){
-    setAuthNote(err?.message || 'Đăng nhập thất bại.', true);
+    if(!SUPABASE_URL || !SUPABASE_ANON) throw new Error('Chưa cấu hình Dữ Liệu U + AK');
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    document.getElementById('sbStatus').style.color = 'var(--green)';
+    document.getElementById('sbStatus').textContent = 'đã kết nối';
+    document.getElementById('hdrConn').textContent = 'Dữ Liệu đã kết nối';
+    return true;
+  }catch(e){
+    document.getElementById('sbStatus').textContent = 'lỗi: ' + e.message;
+    document.getElementById('sbStatus').style.color = 'var(--red)';
+    return false;
   }
 }
 
-async function signOutAdmin(){
+async function loadSchedule(){
   try{
-    const client = await ensureSupabaseClient();
-    await client.auth.signOut();
-  }catch(err){}
-  adminAuthed = false;
-  showAuthGate(true);
-  setAuthNote('Đã đăng xuất.');
-}
-
-function loadDB(){
-  if(!adminAuthed){
-    return Promise.resolve(db);
-  }
-  return (async()=>{
-    try{
-      const cached = localStorage.getItem(DB_KEY);
-      if(cached){
-        db = JSON.parse(cached);
+    const res = await fetch('/api/schedule');
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const courses = Array.isArray(data?.courses) ? data.courses : [];
+    const baseUsedTotal = courses.reduce((sum, course) => sum + (Number.parseInt(course.used, 10) || 0), 0);
+    if(baseUsedTotal === 0){
+      const bookingsRes = await fetch('/api/bookings');
+      if(bookingsRes.ok){
+        const bookingsData = await bookingsRes.json().catch(()=>null);
+        const bookingCounts = (Array.isArray(bookingsData?.bookings) ? bookingsData.bookings : []).reduce((counts, booking) => {
+          const courseId = String(booking?.courseId || booking?.course_id || '').trim();
+          if(!courseId) return counts;
+          counts[courseId] = (counts[courseId] || 0) + 1;
+          return counts;
+        }, {});
+        data.courses = courses.map(course => ({
+          ...course,
+          used: (Number.parseInt(course.used, 10) || 0) + (Number.parseInt(bookingCounts[course.id], 10) || 0)
+        }));
       }
-      if(!db.courses) db.courses = [];
-      if(!db.sessions) db.sessions = [];
-    }catch(e){
-      db = {courses:[],sessions:[]};
     }
-
-    try{
-      const res = await fetch('/api/schedule');
-      if(res.ok){
-        const data = await res.json();
-        db = {
-          courses: Array.isArray(data.courses) ? data.courses : [],
-          sessions: Array.isArray(data.sessions) ? data.sessions : []
-        };
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
-        localStorage.setItem('kyo_public_db', JSON.stringify(buildPublicData()));
-      }
-    }catch(e){}
-    if(!db.courses) db.courses = [];
-    if(!db.sessions) db.sessions = [];
-    rebuildSessions();
-    renderSettings();
-    return db;
-  })();
-}
-
-function saveDB(){
-  if(!adminAuthed){
-    setAuthNote('Vui lòng đăng nhập admin trước khi lưu.', true);
-    return;
+    currentSchedule = {
+      courses: courses,
+      sessions: Array.isArray(data?.sessions) ? data.sessions : [],
+      updatedAt: data?.updatedAt || Date.now()
+    };
+    if(Array.isArray(data?.courses) && data.courses !== courses){
+      currentSchedule.courses = data.courses;
+    }
+  }catch(err){
+    currentSchedule = { courses: [], sessions: [], updatedAt: null };
+    throw err;
   }
-  // Rebuild sessions from courses then merge standalone sessions
-  // Sessions in db are derived from course sessions arrays
-  rebuildSessions();
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-  // Also write the public-facing data key
-  localStorage.setItem('kyo_public_db', JSON.stringify(buildPublicData()));
-  fetch('/api/schedule', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(buildPublicData())
-  }).catch(()=>{}).finally(()=>showToast());
+  return currentSchedule;
 }
 
-function rebuildSessions(){
-  // Sessions are stored inside courses; db.sessions is a flat view for display
-  db.sessions = [];
-  db.courses.forEach(c=>{
-    (c.sessions||[]).forEach(s=>{
-      db.sessions.push({
-        courseId: c.id,
-        courseName: c.name,
-        day: s.day,
-        time: s.time,
-        label: s.label,
-        forceFull: s.forceFull||false,
-        topic: c.topic,
-        level: c.level,
-        used: c.used,
-        total: c.total
-      });
-    });
-  });
-}
-
-function buildPublicData(){
-  return {
-    courses: db.courses,
-    sessions: db.sessions,
-    updatedAt: Date.now()
-  };
-}
-
-function saveAll(){
-  saveDB();
-}
-
-function showToast(){
-  const t = document.getElementById('savedToast');
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
-}
-
-// ── NAVIGATION ──
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('act'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('act'));
-  document.getElementById('page-'+id).classList.add('act');
-  document.querySelector(`[data-page="${id}"]`)?.classList.add('act');
-  if(id==='courses') renderCourses();
-  if(id==='sessions') renderSessions();
-  if(id==='stats') renderStats();
-  if(id==='settings') renderSettings();
-}
-
-// ── RENDER COURSES ──
-function renderCourses(){
-  updateBadges();
-  const total = db.courses.length;
-  const totalSlots = db.courses.reduce((s,c)=>s+c.total,0);
-  const usedSlots = db.courses.reduce((s,c)=>s+c.used,0);
-  const fullCourses = db.courses.filter(c=>c.used>=c.total).length;
-  document.getElementById('courses-stats-row').innerHTML = `
-    <div class="stat-card"><div class="sc-label">Khóa học</div><div class="sc-val">${total}</div><div class="sc-sub">đang hoạt động</div></div>
-    <div class="stat-card"><div class="sc-label">Tổng slot</div><div class="sc-val">${totalSlots}</div><div class="sc-sub">trong tất cả khóa</div></div>
-    <div class="stat-card"><div class="sc-label">Đã dùng</div><div class="sc-val">${usedSlots}</div><div class="sc-sub">${totalSlots>0?Math.round(usedSlots/totalSlots*100):0}% lấp đầy</div></div>
-    <div class="stat-card"><div class="sc-label">Đã đầy</div><div class="sc-val">${fullCourses}</div><div class="sc-sub">khóa hết slot</div></div>
-  `;
-  const list = document.getElementById('courses-list');
-  if(!db.courses.length){
-    list.innerHTML = `<div class="empty-state"><div class="em-icon">📚</div><h3>Chưa có khóa học nào</h3><p>Nhấn "+ Thêm khóa học" để bắt đầu tạo lịch học.</p></div>`;
-    return;
-  }
-  list.innerHTML = db.courses.map((c,i)=>{
-    const left = Math.max(0, c.total - c.used);
-    const locked = Boolean(c.locked);
-    const full = locked || left <= 0;
-    const sessions = (c.sessions||[]).map(s=>`<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;background:var(--s3);border:1px solid var(--b1);padding:1px 6px;border-radius:4px;color:var(--tx2);margin:1px;">${DAY_LABELS[s.day]||'?'} ${s.time}</span>`).join('');
-    return`<div class="tbl-row courses-grid">
-      <div>
-        <div class="tr-name">${c.name}<span class="tr-id">${c.id}</span></div>
-        <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${sessions}</div>
-      </div>
-      <div class="tr-cell"><span class="badge ${TOPIC_CLS[c.topic]||''}">${TOPIC_LABELS[c.topic]||c.topic}</span></div>
-      <div class="tr-cell"><span class="badge ${LEVEL_CLS[c.level]||'all'}">${c.level}</span></div>
-      <div class="tr-cell" style="font-family:'JetBrains Mono',monospace;">${c.used}/${c.total}</div>
-      <div class="tr-cell"><span class="badge ${locked? 'adv' : (full?'adv':'beg')}">${locked? 'Đã khoá' : (full?'Đã đầy':'Còn '+left+' slot')}</span></div>
-      <div class="tr-actions">
-        <button class="btn-edit" onclick="toggleLockCourse(${i})">${c.locked ? 'Mở khoá' : 'Khoá'}</button>
-        <button class="btn-edit" onclick="openEditCourse(${i})">Sửa</button>
-        <button class="btn-del" onclick="confirmDelCourse(${i})">Xóa</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── RENDER SESSIONS ──
-function renderSessions(){
-  updateBadges();
-  const list = document.getElementById('sessions-list');
-  if(!db.sessions.length){
-    list.innerHTML = `<div class="empty-state"><div class="em-icon">📅</div><h3>Chưa có buổi học nào</h3><p>Thêm buổi học vào khóa học, hoặc nhấn "+ Thêm buổi học" để thêm nhanh.</p></div>`;
-    return;
-  }
-  list.innerHTML = db.sessions.map((s,i)=>{
-    const left = Math.max(0, s.total - s.used);
-    return`<div class="tbl-row sessions-grid">
-      <div class="tr-name">${s.label}<span class="tr-id">${s.courseId}</span></div>
-      <div class="tr-cell" style="font-size:11px;">${s.courseName}</div>
-      <div class="tr-cell" style="font-family:'JetBrains Mono',monospace;">${DAY_LABELS[s.day]||'?'}</div>
-      <div class="tr-cell" style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold2);">${s.time}</div>
-      <div class="tr-cell"><span class="badge ${TOPIC_CLS[s.topic]||''}">${TOPIC_LABELS[s.topic]||s.topic}</span></div>
-      <div class="tr-cell" style="font-family:'JetBrains Mono',monospace;">${s.used}/${s.total} <span style="color:var(--tx3);">(còn ${left})</span></div>
-      <div class="tr-actions">
-        <button class="btn-edit" onclick="openSessionBookings(${i})">Xem đăng ký</button>
-        <button class="btn-edit" onclick="openEditSessionFromFlat(${i})">Sửa khóa</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── RENDER STATS ──
-function renderStats(){
-  const total = db.courses.length;
-  const totalSlots = db.courses.reduce((s,c)=>s+c.total,0);
-  const usedSlots = db.courses.reduce((s,c)=>s+c.used,0);
-  const totalSessions = db.sessions.length;
-  document.getElementById('stats-row').innerHTML = `
-    <div class="stat-card"><div class="sc-label">Khóa học</div><div class="sc-val">${total}</div></div>
-    <div class="stat-card"><div class="sc-label">Buổi học / tuần</div><div class="sc-val">${totalSessions}</div></div>
-    <div class="stat-card"><div class="sc-label">Tổng slots</div><div class="sc-val">${totalSlots}</div></div>
-    <div class="stat-card"><div class="sc-label">Đã đặt</div><div class="sc-val">${usedSlots}</div></div>
-  `;
-  const byTopic = {};
-  db.courses.forEach(c=>{ byTopic[c.topic]=(byTopic[c.topic]||0)+1; });
-  const byLevel = {};
-  db.courses.forEach(c=>{ byLevel[c.level]=(byLevel[c.level]||0)+1; });
-  document.getElementById('info-grid').innerHTML = `
-    <div class="info-card">
-      <h3>Theo chủ đề</h3>
-      ${Object.entries(byTopic).map(([k,v])=>`<div class="info-list-item"><span class="ili-key">${TOPIC_LABELS[k]||k}</span><span class="ili-val">${v}</span></div>`).join('')}
-    </div>
-    <div class="info-card">
-      <h3>Theo level</h3>
-      ${Object.entries(byLevel).map(([k,v])=>`<div class="info-list-item"><span class="ili-key">${k}</span><span class="ili-val">${v}</span></div>`).join('')}
-    </div>
-    <div class="info-card">
-      <h3>Slot theo ngày</h3>
-      ${[1,2,3,4,5,6,7].map(d=>{
-        const cnt = db.sessions.filter(s=>s.day===d).length;
-        return cnt>0?`<div class="info-list-item"><span class="ili-key">${DAY_LABELS[d]}</span><span class="ili-val">${cnt} buổi</span></div>`:'';
-      }).join('')||'<div style="color:var(--tx3);font-size:11px;padding:8px 0;">Chưa có dữ liệu</div>'}
-    </div>
-    <div class="info-card">
-      <h3>Tỷ lệ lấp đầy</h3>
-      ${db.courses.map(c=>{
-        const pct = c.total>0?Math.round(c.used/c.total*100):0;
-        return`<div class="info-list-item"><span class="ili-key" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</span><span class="ili-val">${pct}%</span></div>`;
-      }).join('')||'<div style="color:var(--tx3);font-size:11px;padding:8px 0;">Chưa có dữ liệu</div>'}
-    </div>
-  `;
-}
-
-// ── RENDER SETTINGS ──
-function renderSettings(){
-  const raw = localStorage.getItem(DB_KEY)||'{}';
-  const pubRaw = localStorage.getItem('kyo_public_db')||'{}';
-  document.getElementById('storage-info').innerHTML = `
-    kyo_admin_db: &nbsp;&nbsp;${(raw.length/1024).toFixed(2)} KB<br>
-    kyo_public_db: &nbsp;${(pubRaw.length/1024).toFixed(2)} KB<br>
-    Courses: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${db.courses.length} entries<br>
-    Sessions: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${db.sessions.length} entries
-  `;
-}
-
-function updateBadges(){
-  document.getElementById('nb-courses').textContent = db.courses.length;
-  document.getElementById('nb-sessions').textContent = db.sessions.length;
-}
-
-// ── COURSE MODAL ──
-let editCourseIndex = -1;
-let courseSessionRows = [];
-
-function openAddCourse(){
-  editCourseIndex = -1;
-  courseSessionRows = [];
-  document.getElementById('courseModalTitle').textContent = 'Thêm khóa học mới';
-  document.getElementById('c-editId').value = '';
-  document.getElementById('c-name').value = '';
-  document.getElementById('c-id').value = '';
-  document.getElementById('c-topic').value = 'mp';
-  document.getElementById('c-level').value = 'Beginner';
-  document.getElementById('c-total').value = '20';
-  document.getElementById('c-used').value = '0';
-  document.getElementById('c-sessions-list').innerHTML = '';
-  document.getElementById('courseModal').classList.add('show');
-}
-
-function openEditCourse(i){
-  const c = db.courses[i];
-  editCourseIndex = i;
-  courseSessionRows = (c.sessions||[]).map(s=>({...s}));
-  document.getElementById('courseModalTitle').textContent = 'Sửa khóa học';
-  document.getElementById('c-editId').value = c.id;
-  document.getElementById('c-name').value = c.name;
-  document.getElementById('c-id').value = c.id;
-  document.getElementById('c-topic').value = c.topic;
-  document.getElementById('c-level').value = c.level;
-  document.getElementById('c-total').value = c.total;
-  document.getElementById('c-used').value = c.used||0;
-  document.getElementById('c-locked').checked = Boolean(c.locked);
-  renderSessionRows();
-  document.getElementById('courseModal').classList.add('show');
-}
-
-function closeCourseModal(){
-  document.getElementById('courseModal').classList.remove('show');
-}
-
-function renderSessionRows(){
-  const container = document.getElementById('c-sessions-list');
-  container.innerHTML = courseSessionRows.map((s,i)=>`
-    <div class="session-item" data-idx="${i}">
-      <div class="si-fields">
-        <select onchange="updateSessionRow(${i},'day',this.value)" style="max-width:110px;">
-          ${[1,2,3,4,5,6,7].map(d=>`<option value="${d}" ${s.day==d?'selected':''}>${DAY_LABELS[d]}</option>`).join('')}
-        </select>
-        <input type="text" value="${s.time||''}" placeholder="22:00" style="max-width:80px;" oninput="updateSessionRow(${i},'time',this.value)">
-        <input type="text" value="${s.label||''}" placeholder="Tên buổi học" oninput="updateSessionRow(${i},'label',this.value)">
-        <select onchange="updateSessionRow(${i},'forceFull',this.value)" style="max-width:110px;">
-          <option value="0" ${!s.forceFull?'selected':''}>Còn slot</option>
-          <option value="1" ${s.forceFull?'selected':''}>Đã đầy</option>
-        </select>
-      </div>
-      <button class="btn-rem-session" onclick="removeSessionRow(${i})">✕</button>
-    </div>
-  `).join('');
-}
-
-function addSessionRow(){
-  courseSessionRows.push({day:1, time:'22:00', label:'', forceFull:false});
-  renderSessionRows();
-}
-
-function removeSessionRow(i){
-  courseSessionRows.splice(i,1);
-  renderSessionRows();
-}
-
-function updateSessionRow(i, key, val){
-  if(key==='day') courseSessionRows[i].day = parseInt(val);
-  else if(key==='forceFull') courseSessionRows[i].forceFull = val==='1';
-  else courseSessionRows[i][key] = val;
-}
-
-function saveCourse(){
-  if(!adminAuthed){
-    setAuthNote('Vui lòng đăng nhập admin trước khi chỉnh sửa dữ liệu.', true);
-    return;
-  }
-  const name = document.getElementById('c-name').value.trim();
-  const id = document.getElementById('c-id').value.trim().toLowerCase().replace(/\s+/g,'_');
-  const topic = document.getElementById('c-topic').value;
-  const level = document.getElementById('c-level').value;
-  const total = parseInt(document.getElementById('c-total').value)||20;
-  const used = parseInt(document.getElementById('c-used').value)||0;
-  const locked = Boolean(document.getElementById('c-locked')?.checked);
-  if(!name||!id){alert('Vui lòng điền tên và ID khóa học.');return;}
-  // Duplicate ID check
-  if(editCourseIndex === -1){
-    if(db.courses.find(c=>c.id===id)){alert('ID này đã tồn tại. Vui lòng dùng ID khác.');return;}
-  }
-  const course = {id, name, topic, level, total, used, locked, sessions: courseSessionRows.map(s=>({...s}))};
-  if(editCourseIndex === -1){
-    db.courses.push(course);
-  } else {
-    db.courses[editCourseIndex] = course;
-  }
-  saveDB();
-  closeCourseModal();
-  renderCourses();
-}
-
-// ── SESSION MODAL (standalone) ──
-function openAddSession(){
-  document.getElementById('sessionModalTitle').textContent = 'Thêm buổi học';
-  populateCourseSelect('s-courseId');
-  document.getElementById('s-label').value = '';
-  document.getElementById('s-day').value = '1';
-  document.getElementById('s-time').value = '';
-  document.getElementById('s-forceFull').value = '0';
-  document.getElementById('s-editIdx').value = '';
-  document.getElementById('sessionModal').classList.add('show');
-}
-
-function openEditSessionFromFlat(i){
-  // Find the course and session from flat view
-  const s = db.sessions[i];
-  const cIdx = db.courses.findIndex(c=>c.id===s.courseId);
-  if(cIdx===-1) return;
-  openEditCourse(cIdx);
-}
-
-async function openSessionBookings(i){
-  const s = db.sessions[i];
-  if(!s) return;
-  document.getElementById('sb-course-name').textContent = s.courseName || s.courseId;
-  document.getElementById('sb-day').textContent = DAY_LABELS[s.day] || s.day;
-  document.getElementById('sb-time').textContent = s.time || '';
-  const listEl = document.getElementById('sb-list');
-  listEl.textContent = 'Đang tải…';
-  // build params and use URLSearchParams to avoid double-encoding
-  const params = { slotKey: `${s.courseId}|${s.day}|${s.time}`, courseId: s.courseId };
-  const rawEl = document.getElementById('sb-raw'); if(rawEl) rawEl.style.display='none';
-  const infoEl = document.getElementById('sb-info'); if(infoEl) infoEl.textContent='';
-  const qs = new URLSearchParams(params).toString();
+// ──────────────────────────────────────────────
+//  AUTH
+// ──────────────────────────────────────────────
+let authed = false;
+let refreshTimer = null;
+async function doAuth(){
+  const email = document.getElementById('emailInput').value.trim();
+  const pw = document.getElementById('pwInput').value.trim();
+  const err = document.getElementById('pwErr');
+  const btn = document.getElementById('pwBtn');
+  err.textContent = '';
+  if(!email || !pw){ err.textContent = 'Vui lòng nhập email và mật khẩu.'; return; }
+  btn.disabled = true; btn.textContent = 'Đang kiểm tra…';
   try{
-    const res = await fetch(`/api/bookings?${qs}`);
-    const text = await res.text().catch(()=>null);
-    let data = null;
-    try{ data = text ? JSON.parse(text) : null; }catch(e){ data = null; }
-    if(!res.ok){
-      listEl.innerHTML = `<div style="color:var(--red)">HTTP ${res.status} — ${text || 'No response'}</div>`;
-      if(rawEl) { rawEl.style.display='block'; rawEl.textContent = text || ''; }
+    if(!initSupabase()){
+      throw new Error('Chưa cấu hình Dữ Liệu U + AK');
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if(error) throw error;
+    if(!data?.session){
+      throw new Error('Đăng nhập thất bại.');
+    }
+    sessionStorage.setItem('kyo_admin', '1');
+    authed = true;
+    document.getElementById('authGate').style.display = 'none';
+    const appEl = document.getElementById('app');
+    appEl.style.display = 'flex';
+    startAutoRefresh();
+    refreshAll();
+  }catch(e){
+    err.textContent = e?.message || 'Đăng nhập thất bại.';
+    btn.disabled = false; btn.textContent = 'Đăng nhập Admin';
+  }
+}
+function logout(){
+  sessionStorage.removeItem('kyo_admin');
+  authed = false;
+  stopAutoRefresh();
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+document.getElementById('emailInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuth(); });
+document.getElementById('pwInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuth(); });
+
+// Auto-login if session active
+if(sessionStorage.getItem('kyo_admin')){
+  if(initSupabase()){
+    sb.auth.getSession().then(({ data })=>{
+      if(data?.session){
+        authed = true;
+        document.getElementById('authGate').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        startAutoRefresh();
+        refreshAll();
+      }else{
+        sessionStorage.removeItem('kyo_admin');
+      }
+    });
+  }
+}
+
+function startAutoRefresh(){
+  if(refreshTimer) return;
+  refreshTimer = setInterval(()=>{
+    if(authed && document.visibilityState === 'visible'){
+      refreshAll();
+    }
+  }, 8000);
+}
+
+function stopAutoRefresh(){
+  if(!refreshTimer) return;
+  clearInterval(refreshTimer);
+  refreshTimer = null;
+}
+
+document.addEventListener('visibilitychange', ()=>{
+  if(authed && document.visibilityState === 'visible'){
+    refreshAll();
+  }
+});
+
+window.addEventListener('focus', ()=>{
+  if(authed) refreshAll();
+});
+
+// ──────────────────────────────────────────────
+//  NAVIGATION
+// ──────────────────────────────────────────────
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('act'));
+  const panelMap = {dashboard:'pDashboard', upload:'pUpload', courses:'pCourses', bookings:'pBookings', verification:'pVerification'};
+  const panel = document.getElementById(panelMap[id]);
+  if(panel) panel.classList.add('show');
+  const btns = document.querySelectorAll('.nav-item');
+  const labels = ['dashboard','upload','courses','bookings','verification'];
+  const idx = labels.indexOf(id);
+  if(btns[idx]) btns[idx].classList.add('act');
+  if(id==='courses') loadCourses();
+  if(id==='bookings') loadBookings();
+  if(id==='verification') loadVerifications();
+  if(id==='dashboard') refreshAll();
+}
+
+// ──────────────────────────────────────────────
+//  TOAST
+// ──────────────────────────────────────────────
+function toast(msg, type='ok', dur=3500){
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = (type==='ok'?'✓ ':'✗ ') + msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.style.opacity='0', dur - 400);
+  setTimeout(()=>el.remove(), dur);
+}
+
+// ──────────────────────────────────────────────
+//  HELPERS
+// ──────────────────────────────────────────────
+const TOPIC_LABEL = {mp:'Market Profile', pa:'Price Action', cr:'Crypto', ps:'Tâm lý'};
+const DAYS = ['','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
+function topicBadge(t){ return `<span class="badge ${t}">${TOPIC_LABEL[t]||t}</span>`; }
+function fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function toDateInputValue(date){
+  if(!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+}
+function normalizeDateInput(value){
+  const text = String(value || '').trim();
+  if(!text) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? '' : toDateInputValue(parsed);
+}
+function weekdayFromDate(value){
+  const normalized = normalizeDateInput(value);
+  if(!normalized) return null;
+  const parsed = new Date(`${normalized}T00:00:00`);
+  if(Number.isNaN(parsed.getTime())) return null;
+  const dow = parsed.getDay();
+  return dow === 0 ? 7 : dow;
+}
+function nextDateForWeekday(baseValue, targetDay){
+  const initial = normalizeDateInput(baseValue) || toDateInputValue(new Date());
+  const base = new Date(`${initial}T00:00:00`);
+  if(Number.isNaN(base.getTime())) return '';
+  const currentDay = base.getDay() === 0 ? 7 : base.getDay();
+  let delta = (Number(targetDay) - currentDay + 7) % 7;
+  if(delta === 0) delta = 7;
+  base.setDate(base.getDate() + delta);
+  return toDateInputValue(base);
+}
+function formatSessionDate(value){
+  const normalized = normalizeDateInput(value);
+  if(!normalized) return '';
+  const parsed = new Date(`${normalized}T00:00:00`);
+  if(Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+// ──────────────────────────────────────────────
+//  REFRESH ALL
+// ──────────────────────────────────────────────
+async function refreshAll(){
+  if(!sb) return;
+  await loadSchedule().catch(()=>null);
+  await Promise.all([loadStats(), loadDashboard()]);
+  const verifyPanel = document.getElementById('pVerification');
+  if(verifyPanel && verifyPanel.classList.contains('show')){
+    await loadVerifications();
+  }
+}
+
+// ──────────────────────────────────────────────
+//  STATS
+// ──────────────────────────────────────────────
+async function loadStats(){
+  if(!sb) return;
+  try{
+    const courses = Array.isArray(currentSchedule?.courses) ? currentSchedule.courses : [];
+    const res = await fetch('/api/bookings');
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const bookings = Array.isArray(data?.bookings) ? data.bookings : [];
+    const totalSlots = courses.reduce((s,x)=>s+(x.total||0),0);
+    const usedSlots  = courses.reduce((s,x)=>s+(x.used||0),0);
+    const sessions   = courses.reduce((s,x)=>s+(Array.isArray(x.sessions)?x.sessions.length:0),0);
+    document.getElementById('statCourses').textContent  = courses.length;
+    document.getElementById('statSlots').textContent    = Math.max(totalSlots-usedSlots,0);
+    document.getElementById('statBookings').textContent = bookings.length;
+    document.getElementById('statSessions').textContent = sessions;
+  }catch(e){ console.error(e); }
+}
+
+// ──────────────────────────────────────────────
+//  DASHBOARD TABLE
+// ──────────────────────────────────────────────
+async function loadDashboard(){
+  if(!sb) return;
+  const tbl = document.getElementById('dashTbl');
+  tbl.innerHTML = '<tr><td colspan="5" class="tbl-loading">Đang tải…</td></tr>';
+  try{
+    const data = Array.isArray(currentSchedule?.courses) ? [...currentSchedule.courses].reverse().slice(0,20) : [];
+    if(!data.length){ tbl.innerHTML='<tr><td colspan="5" class="tbl-empty">Chưa có khóa học nào.</td></tr>'; return; }
+    tbl.innerHTML = data.map(c=>{
+      const pct = c.total ? Math.round((c.used||0)/c.total*100) : 0;
+      const full = (c.used||0) >= (c.total||1);
+      return `<tr>
+        <td><div class="tbl-name">${esc(c.name)}</div><div class="tbl-id">${esc(c.id)}</div></td>
+        <td>${topicBadge(c.topic)}</td>
+        <td><span style="font-size:11px;color:var(--tx2);">${esc(c.level)}</span></td>
+        <td>
+          <div style="font-size:11px;color:var(--tx2);margin-bottom:4px;">${c.used||0} / ${c.total||0}</div>
+          <div class="prog"><div class="prog-inner ${full?'full':''}" style="width:${pct}%"></div></div>
+        </td>
+        <td>${c.locked?'<span class="badge lock">Locked</span>':'<span class="badge open">Open</span>'}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){ tbl.innerHTML=`<tr><td colspan="5" class="tbl-empty" style="color:var(--red);">Lỗi: ${esc(e.message)}</td></tr>`; }
+}
+
+// ──────────────────────────────────────────────
+//  COURSES TABLE
+// ──────────────────────────────────────────────
+async function loadCourses(){
+  if(!sb) return;
+  const tbl = document.getElementById('coursesTbl');
+  tbl.innerHTML = '<tr><td colspan="6" class="tbl-loading">Đang tải…</td></tr>';
+  try{
+    const data = Array.isArray(currentSchedule?.courses) ? currentSchedule.courses : [];
+    if(!data.length){ tbl.innerHTML='<tr><td colspan="6" class="tbl-empty">Chưa có khóa học nào. Upload khóa học đầu tiên!</td></tr>'; return; }
+    tbl.innerHTML = [...data].reverse().map(c=>{
+      const sessions = Array.isArray(c.sessions) ? c.sessions : [];
+      const pct = c.total ? Math.round((c.used||0)/c.total*100) : 0;
+      const full = (c.used||0) >= (c.total||1);
+      const sessionChips = sessions.map(s=>{
+        const dateText = formatSessionDate(s.date);
+        const dayText = DAYS[s.day] || '?';
+        return `<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;background:var(--s3);border:1px solid var(--b1);padding:1px 6px;border-radius:4px;color:var(--tx2);margin:1px;">${dayText}${dateText ? ' · ' + dateText : ''} · ${esc(s.time||'')}</span>`;
+      }).join('');
+      return `<tr>
+        <td>
+          <div class="tbl-name">${esc(c.name)}</div>
+          <div class="tbl-id">${esc(c.id)}</div>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${sessionChips}</div>
+        </td>
+        <td>${topicBadge(c.topic)}<br><span style="font-size:10px;color:var(--tx3);margin-top:3px;display:block;">${esc(c.level)}</span></td>
+        <td>
+          <div style="font-size:11px;color:var(--tx2);margin-bottom:4px;">${c.used||0}/${c.total||0}</div>
+          <div class="prog"><div class="prog-inner ${full?'full':''}" style="width:${pct}%"></div></div>
+        </td>
+        <td><span style="font-size:11px;color:var(--tx2);">${sessions.length} buổi</span></td>
+        <td>${c.locked?'<span class="badge lock">Locked</span>':'<span class="badge open">Open</span>'}</td>
+        <td>
+          <div class="tbl-actions">
+            <button class="btn-edit" onclick="editCourse('${esc(c.id)}')">Sửa</button>
+            <button class="btn-del" onclick="openDelModal('${esc(c.id)}','${esc(c.name)}')">Xoá</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }catch(e){ tbl.innerHTML=`<tr><td colspan="6" class="tbl-empty" style="color:var(--red);">Lỗi: ${esc(e.message)}</td></tr>`; }
+}
+
+async function loadBookings(){
+  if(!sb) return;
+  const tbl = document.getElementById('bookingsTbl');
+  tbl.innerHTML = '<tr><td colspan="6" class="tbl-loading">Đang tải…</td></tr>';
+  try{
+    const res = await fetch('/api/bookings');
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const rows = Array.isArray(data?.bookings) ? data.bookings : [];
+    if(!rows.length){ tbl.innerHTML='<tr><td colspan="6" class="tbl-empty">Chưa có đặt lịch nào.</td></tr>'; return; }
+    tbl.innerHTML = rows.map(b=>{
+      const courseName = b.courseName || b.course_name || b.courseId || b.course_id || '—';
+      const dayLabel = DAYS[b.day] || ('Ngày '+b.day);
+      return `<tr>
+        <td><div class="tbl-name">${esc(b.userName||b.user_name||b.userId||b.user_id||'Unknown')}</div></td>
+        <td>
+          <div class="tbl-name" style="font-size:11px;font-family:'JetBrains Mono',monospace;">${esc(b.userId||b.user_id||'')}</div>
+          <div class="booking-meta">Discord user ID</div>
+        </td>
+        <td><div style="font-size:12px;font-weight:600;">${esc(courseName)}</div></td>
+        <td><span style="font-size:11.5px;">${dayLabel} · ${esc(b.time||'')}</span></td>
+        <td><span style="font-size:10.5px;color:var(--tx2);">${fmtDate(b.createdAt || b.created_at)}</span></td>
+        <td><button class="btn-del" onclick="deleteBooking('${esc(b.id)}')">Xoá</button></td>
+      </tr>`;
+    }).join('');
+  }catch(e){ tbl.innerHTML=`<tr><td colspan="6" class="tbl-empty" style="color:var(--red);">Lỗi: ${esc(e.message)}</td></tr>`; }
+}
+
+async function deleteBooking(id){
+  if(!sb||!id) return;
+  if(!confirm('Xoá booking này?')) return;
+  try{
+    const qs = new URLSearchParams({ id, userId: 'admin', admin: '1' });
+    const res = await fetch(`/api/bookings?${qs.toString()}`, { method: 'DELETE' });
+    const data = await res.json().catch(()=>null);
+    if(!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+    toast('Đã xoá booking');
+    loadBookings();
+    loadStats();
+  }catch(error){
+    toast('Lỗi xoá booking: ' + (error?.message || error), 'err');
+  }
+}
+
+async function getAdminAccessToken(){
+  if(!sb) return '';
+  const { data } = await sb.auth.getSession();
+  return String(data?.session?.access_token || '').trim();
+}
+
+async function adminApi(path, options = {}){
+  const token = await getAdminAccessToken();
+  if(!token) throw new Error('Admin session expired. Vui lòng đăng nhập lại.');
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers || {})
+  };
+  if(!headers['Content-Type'] && options.body){
+    headers['Content-Type'] = 'application/json';
+  }
+  return fetch(path, { ...options, headers });
+}
+
+function verificationBadge(status){
+  const value = String(status || '').toLowerCase();
+  const labelMap = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+  return `<span class="verify-badge ${esc(value || 'pending')}">${esc(labelMap[value] || value || 'Pending')}</span>`;
+}
+
+async function loadVerifications(){
+  if(!sb) return;
+  const tbl = document.getElementById('verificationsTbl');
+  if(!tbl) return;
+  tbl.innerHTML = '<tr><td colspan="6" class="tbl-loading">Đang tải…</td></tr>';
+  try{
+    const res = await adminApi('/verification?admin=1');
+    const data = await res.json().catch(()=>null);
+    if(!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+    const rows = Array.isArray(data?.requests) ? data.requests : [];
+    if(!rows.length){
+      tbl.innerHTML = '<tr><td colspan="6" class="tbl-empty">Chưa có request xác minh UID.</td></tr>';
       return;
     }
-    let rows = Array.isArray(data?.bookings) ? data.bookings : [];
-    // fallback: if no rows for slotKey, try fetch by courseId only
-    if(!rows.length){
-      const res2 = await fetch(`/api/bookings?${new URLSearchParams({ courseId: s.courseId }).toString()}`);
-      const t2 = await res2.text().catch(()=>null);
-      let d2 = null; try{ d2 = t2 ? JSON.parse(t2) : null; }catch(e){ d2 = null; }
-      if(res2.ok && Array.isArray(d2?.bookings)){
-        rows = d2.bookings.filter(r=>r.slotKey===`${s.courseId}|${s.day}|${s.time}`);
-        if(!rows.length && d2.bookings.length){
-          infoEl.textContent = 'Không tìm thấy theo slotKey; hiển thị tất cả bookings của khóa (lọc client).';
-          rows = d2.bookings;
-        }
-      }
-    }
-    if(!rows.length){
-      listEl.innerHTML = '<div style="color:var(--tx3)">Chưa có người đăng ký cho buổi này.</div>';
-    } else {
-      listEl.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--tx2)"><th>ID Booking</th><th>Discord ID</th><th>Họ tên</th><th>Thời gian</th></tr></thead><tbody>' +
-        rows.map(r=>`<tr style="border-top:1px solid var(--b1)"><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.id}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.userId}</td><td style="padding:8px">${r.userName || ''}</td><td style="font-family:JetBrains Mono,monospace;padding:8px">${r.createdAt||''}</td></tr>`).join('') +
-        '</tbody></table>';
-    }
-    if(rawEl){ rawEl.style.display='block'; rawEl.textContent = JSON.stringify(data, null, 2); }
-  }catch(err){
-    listEl.innerHTML = `<div style="color:var(--red)">Lỗi tải danh sách: ${err.message}</div>`;
-    if(rawEl) { rawEl.style.display='block'; rawEl.textContent = String(err.stack||err.message||err); }
+    tbl.innerHTML = rows.map(r=>{
+      const status = String(r.status || '').toLowerCase();
+      const nextApprovedLabel = status === 'approved' ? 'Đã xác thực' : 'Xác thực';
+      const nextRejectedLabel = status === 'rejected' ? 'Không xác thực' : 'Không xác thực';
+      return `<tr>
+        <td><div class="tbl-name">${esc(r.userName || r.userId || 'Unknown')}</div></td>
+        <td>
+          <div class="tbl-name" style="font-size:11px;font-family:'JetBrains Mono',monospace;">${esc(r.userId || '')}</div>
+          <div class="booking-meta">Discord user ID</div>
+        </td>
+        <td><div class="tbl-name" style="font-size:11.5px;font-family:'JetBrains Mono',monospace;">${esc(r.uid || '')}</div></td>
+        <td>${verificationBadge(status)}</td>
+        <td><span style="font-size:10.5px;color:var(--tx2);">${fmtDate(r.submittedAt)}</span></td>
+        <td>
+          <div class="uid-actions">
+            <button class="btn-edit" onclick="reviewVerification('${esc(r.userId)}','approved')">${esc(nextApprovedLabel)}</button>
+            <button class="btn-del" onclick="reviewVerification('${esc(r.userId)}','rejected')">${esc(nextRejectedLabel)}</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    tbl.innerHTML = `<tr><td colspan="6" class="tbl-empty" style="color:var(--red);">Lỗi: ${esc(e.message)}</td></tr>`;
   }
-  document.getElementById('sessionBookingsModal').classList.add('show');
 }
 
-function closeSessionBookings(){ document.getElementById('sessionBookingsModal').classList.remove('show'); }
-
-// hook modal buttons after DOM is ready
-document.addEventListener('click', (e)=>{
-  const target = e.target;
-  if(target && target.id === 'sb-retry'){
-    // find session by matching courseName / courseId and re-open modal
-    // simple approach: close and reopen using sessions find
-    // get displayed course id from sb-course-name (we store id in text when opening)
-    // fallback: reload page
-    window.location.reload();
+async function reviewVerification(userId, status){
+  if(!sb || !userId || !status) return;
+  try{
+    const res = await adminApi('/verification', {
+      method: 'PATCH',
+      body: JSON.stringify({ userId, status })
+    });
+    const data = await res.json().catch(()=>null);
+    if(!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+    toast(`Đã chuyển sang trạng thái ${status === 'approved' ? 'xác thực' : 'không xác thực'}`);
+    loadVerifications();
+  }catch(error){
+    toast('Lỗi cập nhật xác minh: ' + (error?.message || error), 'err');
   }
-  if(target && target.id === 'sb-show-course'){
-    const courseId = document.getElementById('sb-course-name')?.textContent || '';
-    if(!courseId) return;
-    // find any session with matching courseId and open bookings for that session
-    const idx = db.sessions.findIndex(s=>s.courseId===courseId || s.courseName===courseId);
-    if(idx!==-1) openSessionBookings(idx);
-  }
-});
-
-function closeSessionModal(){
-  document.getElementById('sessionModal').classList.remove('show');
 }
 
-function populateCourseSelect(id){
-  const sel = document.getElementById(id);
-  sel.innerHTML = db.courses.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+// ──────────────────────────────────────────────
+//  SESSION BUILDER
+// ──────────────────────────────────────────────
+let sessionCount = 0;
+function addSession(day=1, time='20:00', label='', date=''){
+  const box = document.getElementById('sessionsBox');
+  const id = ++sessionCount;
+  const normalizedDate = normalizeDateInput(date);
+  const initialDay = normalizedDate ? (weekdayFromDate(normalizedDate) || day) : day;
+  const row = document.createElement('div');
+  row.className = 'session-row'; row.id = `srow_${id}`;
+  row.innerHTML = `
+    <select id="sday_${id}" onchange="syncSessionDay(${id})">
+      <option value="1" ${initialDay==1?'selected':''}>Thứ 2</option>
+      <option value="2" ${initialDay==2?'selected':''}>Thứ 3</option>
+      <option value="3" ${initialDay==3?'selected':''}>Thứ 4</option>
+      <option value="4" ${initialDay==4?'selected':''}>Thứ 5</option>
+      <option value="5" ${initialDay==5?'selected':''}>Thứ 6</option>
+      <option value="6" ${initialDay==6?'selected':''}>Thứ 7</option>
+      <option value="7" ${initialDay==7?'selected':''}>Chủ nhật</option>
+    </select>
+    <input type="date" id="sdate_${id}" value="${normalizedDate}" onchange="syncSessionDate(${id})">
+    <input type="text" id="stime_${id}" value="${esc(time)}" placeholder="VD: 20:00" />
+    <button class="btn-icon" onclick="removeSession(${id})" title="Xoá buổi">✕</button>
+  `;
+  box.appendChild(row);
 }
-
-function saveSession(){
-  if(!adminAuthed){
-    setAuthNote('Vui lòng đăng nhập admin trước khi chỉnh sửa dữ liệu.', true);
+function removeSession(id){
+  const el = document.getElementById(`srow_${id}`);
+  if(el) el.remove();
+}
+function syncSessionDate(id){
+  const dateEl = document.getElementById(`sdate_${id}`);
+  const dayEl = document.getElementById(`sday_${id}`);
+  if(!dateEl || !dayEl) return;
+  const normalized = normalizeDateInput(dateEl.value);
+  if(!normalized){
+    dateEl.value = '';
     return;
   }
-  const courseId = document.getElementById('s-courseId').value;
-  const label = document.getElementById('s-label').value.trim();
-  const day = parseInt(document.getElementById('s-day').value);
-  const time = document.getElementById('s-time').value.trim();
-  const forceFull = document.getElementById('s-forceFull').value === '1';
-  if(!label||!time){alert('Vui lòng điền tên buổi và giờ học.');return;}
-  const cIdx = db.courses.findIndex(c=>c.id===courseId);
-  if(cIdx===-1){alert('Không tìm thấy khóa học.');return;}
-  db.courses[cIdx].sessions = db.courses[cIdx].sessions||[];
-  db.courses[cIdx].sessions.push({day, time, label, forceFull});
-  saveDB();
-  closeSessionModal();
-  renderSessions();
+  dateEl.value = normalized;
+  const weekday = weekdayFromDate(normalized);
+  if(weekday) dayEl.value = String(weekday);
+}
+function syncSessionDay(id){
+  const dateEl = document.getElementById(`sdate_${id}`);
+  const dayEl = document.getElementById(`sday_${id}`);
+  if(!dateEl || !dayEl) return;
+  const targetDay = parseInt(dayEl.value, 10) || 1;
+  dateEl.value = nextDateForWeekday(dateEl.value, targetDay);
+}
+function getSessionRows(){
+  return Array.from(document.querySelectorAll('#sessionsBox .session-row')).map(row=>{
+    const id = row.id.replace('srow_','');
+    return {
+      day: parseInt(document.getElementById(`sday_${id}`).value),
+      date: normalizeDateInput(document.getElementById(`sdate_${id}`).value),
+      time: document.getElementById(`stime_${id}`).value.trim(),
+    };
+  }).filter(s=>s.time);
 }
 
-// ── DELETE ──
-let delCallback = null;
-
-function confirmDelCourse(i){
-  const c = db.courses[i];
-  document.getElementById('delTitle').textContent = `Xóa "${c.name}"?`;
-  document.getElementById('delMsg').textContent = `Tất cả ${(c.sessions||[]).length} buổi học trong khóa này sẽ bị xóa. Hành động không thể hoàn tác.`;
-  delCallback = ()=>{ db.courses.splice(i,1); saveDB(); renderCourses(); closeDelModal(); };
-  document.getElementById('delConfirmBtn').onclick = delCallback;
-  document.getElementById('delModal').classList.add('show');
+// ──────────────────────────────────────────────
+//  LOCK TOGGLE
+// ──────────────────────────────────────────────
+let locked = false;
+function toggleLock(){
+  locked = !locked;
+  document.getElementById('lockToggle').classList.toggle('on', locked);
 }
 
-function confirmResetAll(){
-  document.getElementById('delTitle').textContent = 'Reset toàn bộ dữ liệu?';
-  document.getElementById('delMsg').textContent = 'Tất cả khóa học và buổi học sẽ bị xóa vĩnh viễn. Không thể hoàn tác.';
-  delCallback = ()=>{ db={courses:[],sessions:[]}; saveDB(); renderCourses(); closeDelModal(); renderSettings(); };
-  document.getElementById('delConfirmBtn').onclick = delCallback;
-  document.getElementById('delModal').classList.add('show');
-}
+// ──────────────────────────────────────────────
+//  UPLOAD COURSE
+// ──────────────────────────────────────────────
+async function uploadCourse(){
+  if(!sb){ toast('Dữ liệu chưa kết nối','err'); return; }
+  const name   = document.getElementById('fName').value.trim();
+  const topic  = document.getElementById('fTopic').value;
+  const level  = document.getElementById('fLevel').value;
+  const total  = parseInt(document.getElementById('fTotal').value)||0;
+  const used   = parseInt(document.getElementById('fUsed').value)||0;
+  const sessions = getSessionRows();
+  const msg    = document.getElementById('uploadMsg');
 
-function closeDelModal(){
-  document.getElementById('delModal').classList.remove('show');
-  delCallback = null;
-}
+  msg.textContent = ''; msg.className = 'form-msg';
 
-function toggleLockCourse(i){
-  if(!adminAuthed) return setAuthNote('Vui lòng đăng nhập admin để thay đổi trạng thái.', true);
-  const c = db.courses[i]; if(!c) return;
-  c.locked = !Boolean(c.locked);
-  saveDB();
-  renderCourses();
-}
+  if(!name){ msg.textContent='Vui lòng nhập tên khóa học.'; msg.className='form-msg err'; return; }
+  if(!sessions.length){ msg.textContent='Vui lòng thêm ít nhất 1 buổi học.'; msg.className='form-msg err'; return; }
+  if(total<=0){ msg.textContent='Tổng slot phải lớn hơn 0.'; msg.className='form-msg err'; return; }
 
-// ── IMPORT / EXPORT ──
-function exportData(){
-  const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `kyo_schedule_${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-}
+  const btn = document.querySelector('.btn-upload');
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> Đang upload…';
 
-function importData(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    try{
-      const parsed = JSON.parse(ev.target.result);
-      if(!parsed.courses) throw new Error('Invalid format');
-      db = parsed;
-      saveDB();
-      renderCourses();
-      renderSettings();
-      alert('Import thành công!');
-    }catch(err){
-      alert('Lỗi import: ' + err.message);
-    }
+  // Build sessions with label = course name
+  if(sessions.some(s=>!s.date)){
+    msg.textContent = 'Vui lòng chọn ngày cụ thể cho từng buổi học.';
+    msg.className = 'form-msg err';
+    btn.disabled = false; btn.innerHTML = '<span>⬆</span> Upload khóa học';
+    return;
+  }
+  const sessWithLabel = sessions.map(s=>({...s, label: name, forceFull: false}));
+  const newCourse = {
+    id: name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_\-]/g,''),
+    name,
+    topic,
+    level,
+    total: Number(total),
+    used: Number(used),
+    locked,
+    sessions: sessWithLabel,
   };
-  reader.readAsText(file);
-  e.target.value = '';
-}
 
-// ── INIT ──
-async function initAdminAuth(){
+  const nextCourses = Array.isArray(currentSchedule?.courses) ? [...currentSchedule.courses, newCourse] : [newCourse];
+  const payload = { courses: nextCourses };
+
   try{
-    const client = await ensureSupabaseClient();
-    client.auth.onAuthStateChange(async (_event, session)=>{
-      await syncAuthState(session);
+    const res = await fetch('/api/schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    const { data } = await client.auth.getSession();
-    await syncAuthState(data?.session || null);
-  }catch(err){
-    setAuthNote('Không khởi tạo được Supabase Auth. Kiểm tra URL hoặc anon key.', true);
-    showAuthGate(true);
+    if(!res.ok){
+      const text = await res.text().catch(()=>'');
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+    loadCourses();
+    loadStats();
+    msg.textContent = '✓ Upload thành công!'; msg.className = 'form-msg ok';
+    toast('Khóa học "' + name + '" đã được upload!');
+    resetForm();
+    // trigger reload on index.html via broadcast
+    broadcastUpdate();
+  }catch(e){
+    msg.textContent = 'Lỗi: ' + e.message; msg.className = 'form-msg err';
+    toast('Upload thất bại: ' + e.message,'err');
+  } finally{
+    btn.disabled = false; btn.innerHTML = '<span>⬆</span> Upload khóa học';
   }
 }
 
-const loginBtn = document.getElementById('adminLoginBtn');
-if(loginBtn) loginBtn.addEventListener('click', signInAdmin);
-const logoutBtn = document.getElementById('adminLogoutBtn');
-if(logoutBtn) logoutBtn.addEventListener('click', signOutAdmin);
-document.getElementById('adminPassword')?.addEventListener('keydown', e=>{
-  if(e.key === 'Enter') signInAdmin();
-});
-document.getElementById('adminEmail')?.addEventListener('keydown', e=>{
-  if(e.key === 'Enter') signInAdmin();
-});
+function resetForm(){
+  document.getElementById('fName').value = '';
+  document.getElementById('fTopic').value = 'mp';
+  document.getElementById('fLevel').value = 'Beginner';
+  document.getElementById('fTotal').value = '10';
+  document.getElementById('fUsed').value = '0';
+  locked = false;
+  document.getElementById('lockToggle').classList.remove('on');
+  document.getElementById('sessionsBox').innerHTML = '';
+  sessionCount = 0;
+  addSession();
+  document.getElementById('uploadMsg').textContent = '';
+}
 
-showAuthGate(true);
-setAuthNote('Đang kiểm tra phiên đăng nhập...');
-initAdminAuth();
-
-document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){
-    closeCourseModal();
-    closeSessionModal();
+// ──────────────────────────────────────────────
+//  DELETE COURSE
+// ──────────────────────────────────────────────
+let delTargetId = null;
+function openDelModal(id, name){
+  delTargetId = id;
+  document.getElementById('delName').textContent = name;
+  document.getElementById('delConfirmBtn').onclick = confirmDelete;
+  document.getElementById('delOv').classList.add('show');
+}
+function closeDelModal(){
+  delTargetId = null;
+  document.getElementById('delOv').classList.remove('show');
+}
+async function confirmDelete(){
+  if(!sb || !delTargetId) return;
+  const btn = document.getElementById('delConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Đang xoá…';
+  try{
+    const nextCourses = (currentSchedule?.courses || []).filter(course => course.id !== delTargetId);
+    const res = await fetch('/api/schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courses: nextCourses })
+    });
+    if(!res.ok){
+      const text = await res.text().catch(()=>'');
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    await sb.from('schedule_bookings').delete().eq('course_id', delTargetId);
+    await loadSchedule();
+    loadCourses();
+    loadStats();
+    toast('Đã xoá khóa học!');
     closeDelModal();
+    broadcastUpdate();
+  }catch(e){
+    toast('Lỗi xoá: ' + e.message,'err');
+  } finally{
+    btn.disabled = false; btn.textContent = 'Xoá ngay';
+  }
+}
+
+// ──────────────────────────────────────────────
+//  EDIT COURSE (quick inline slot edit)
+// ──────────────────────────────────────────────
+async function editCourse(id){
+  if(!sb||!id) return;
+  const data = (currentSchedule?.courses || []).find(course => course.id === id);
+  if(!data){ toast('Không tải được khóa học','err'); return; }
+  // Pre-fill form and switch to upload panel
+  document.getElementById('fName').value = data.name||'';
+  document.getElementById('fTopic').value = data.topic||'mp';
+  document.getElementById('fLevel').value = data.level||'Beginner';
+  document.getElementById('fTotal').value = data.total||10;
+  document.getElementById('fUsed').value = data.used||0;
+  locked = Boolean(data.locked);
+  document.getElementById('lockToggle').classList.toggle('on',locked);
+  // Sessions
+  document.getElementById('sessionsBox').innerHTML='';
+  sessionCount=0;
+  const sessions = Array.isArray(data.sessions)?data.sessions:[];
+  if(sessions.length){ sessions.forEach(s=>addSession(s.day,s.time,s.label,s.date)); }
+  else addSession();
+  // Change upload btn to update
+  const btn = document.querySelector('.btn-upload');
+  btn.innerHTML='<span>💾</span> Cập nhật khóa học';
+  btn.onclick = ()=>updateCourse(id);
+  showPanel('upload');
+  document.querySelector('.panel-head h1').textContent = 'Sửa khóa học';
+  toast('Đang sửa: ' + data.name);
+}
+
+async function updateCourse(id){
+  if(!sb){ toast('Dữ liệu chưa kết nối','err'); return; }
+  const name    = document.getElementById('fName').value.trim();
+  const topic   = document.getElementById('fTopic').value;
+  const level   = document.getElementById('fLevel').value;
+  const total   = parseInt(document.getElementById('fTotal').value)||0;
+  const used    = parseInt(document.getElementById('fUsed').value)||0;
+  const sessions= getSessionRows().map(s=>({...s,label:name,forceFull:false}));
+  const msg     = document.getElementById('uploadMsg');
+  msg.textContent=''; msg.className='form-msg';
+  if(!name){msg.textContent='Vui lòng nhập tên.';msg.className='form-msg err';return;}
+  if(sessions.some(s=>!s.date)){ msg.textContent='Vui lòng chọn ngày cụ thể cho từng buổi học.'; msg.className='form-msg err'; return; }
+  const btn=document.querySelector('.btn-upload');
+  btn.disabled=true;btn.innerHTML='<span>⏳</span> Đang lưu…';
+  try{
+    const updatedCourses = (currentSchedule?.courses || []).map(course => {
+      if(course.id !== id) return course;
+      return { id, name, topic, level, total, used, locked, sessions };
+    });
+    const res = await fetch('/api/schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courses: updatedCourses })
+    });
+    if(!res.ok){
+      const text = await res.text().catch(()=>'');
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+    loadCourses();
+    loadStats();
+    toast('Đã cập nhật khóa học!');
+    msg.textContent='✓ Cập nhật thành công!';msg.className='form-msg ok';
+    resetForm();
+    btn.innerHTML='<span>⬆</span> Upload khóa học';
+    btn.onclick=uploadCourse;
+    document.querySelector('.panel-head h1').textContent='Upload khóa học mới';
+    broadcastUpdate();
+  }catch(e){
+    msg.textContent='Lỗi: '+e.message;msg.className='form-msg err';
+    toast('Lỗi cập nhật: '+e.message,'err');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+// ──────────────────────────────────────────────
+//  BROADCAST (signals index.html to reload)
+// ──────────────────────────────────────────────
+function broadcastUpdate(){
+  // localStorage event triggers the storage listener on index.html
+  try{
+    localStorage.setItem('kyo_admin_db', Date.now().toString());
+  }catch(e){}
+  // Also use BroadcastChannel if available
+  try{
+    const bc = new BroadcastChannel('kyo_schedule');
+    bc.postMessage({type:'schedule_updated'});
+    bc.close();
+  }catch(e){}
+}
+
+// ──────────────────────────────────────────────
+//  INIT
+// ──────────────────────────────────────────────
+function esc(s){ const d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
+addSession(); // default 1 session row in form
+
+// Listen for broadcasts from other tabs (index.html storage events)
+window.addEventListener('storage',e=>{
+  if(e.key==='kyo_admin_db'||e.key==='kyo_public_db'){
+    refreshAll();
+    if(document.getElementById('pCourses').classList.contains('show')) loadCourses();
+    if(document.getElementById('pBookings').classList.contains('show')) loadBookings();
   }
 });
 </script>

@@ -5,13 +5,17 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const WEB_PORT = process.env.WEB_PORT || 4000;
 
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `http://localhost:${PORT}/auth/discord/callback`;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DISCORD_CLIENT_ID = String(process.env.DISCORD_CLIENT_ID || '').trim();
+const DISCORD_CLIENT_SECRET = String(process.env.DISCORD_CLIENT_SECRET || '').trim();
+const DISCORD_REDIRECT_URI = String(process.env.DISCORD_REDIRECT_URI || `http://localhost:${WEB_PORT}/auth/discord/callback`).trim();
+const DISCORD_BOT_TOKEN = String(process.env.DISCORD_BOT_TOKEN || '').trim();
+const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || '').trim();
+const DISCORD_BOT_API_URL = String(process.env.DISCORD_BOT_API_URL || '').trim().replace(/\/+$/, '');
+const INTERNAL_API_SECRET = String(process.env.INTERNAL_API_SECRET || '').trim();
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'schedule_state';
 const SUPABASE_RECORD_ID = process.env.SUPABASE_RECORD_ID || 'main';
 const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -23,7 +27,12 @@ let supabaseClient = null;
 if(SUPABASE_ENABLED){
   try{
     const { createClient } = require('@supabase/supabase-js');
-    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const clientOptions = {};
+    try {
+      const ws = require('ws');
+      clientOptions.realtime = { transport: ws };
+    } catch (_) { /* ws not installed; Node >=22 has global WebSocket */ }
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, clientOptions);
     console.log('Supabase client initialized (server SDK)');
   }catch(e){
     // SDK not installed, we'll use REST fallback already implemented
@@ -33,6 +42,12 @@ if(SUPABASE_ENABLED){
 
 if(!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET){
   console.warn('DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not set. Fill .env or env vars.');
+}
+if(!DISCORD_BOT_TOKEN || !DISCORD_GUILD_ID){
+  console.warn('DISCORD_BOT_TOKEN or DISCORD_GUILD_ID not set. Guild auto-join will be skipped.');
+}
+if(!DISCORD_BOT_API_URL || !INTERNAL_API_SECRET){
+  console.warn('DISCORD_BOT_API_URL or INTERNAL_API_SECRET not set. Bot-service join fallback will be skipped.');
 }
 if(!SUPABASE_ENABLED){
   console.warn('Supabase env not set. Schedule API will use in-memory fallback only.');
@@ -71,65 +86,113 @@ async function supabaseFetch(path, options = {}){
   return response;
 }
 
+function mapCoursesAndSessions(courses, sessions){
+  const mappedCourses = (courses || []).map(c => ({
+    id: c.id,
+    name: c.name,
+    topic: c.topic,
+    level: c.level,
+    total: c.total,
+    used: c.used,
+    locked: c.locked,
+    sessions: (sessions || [])
+      .filter(s => s.course_id === c.id)
+      .map(s => ({ day: s.day, time: s.time, label: s.label, forceFull: s.force_full }))
+  }));
+  const mappedSessions = (sessions || []).map(s => {
+    const course = (courses || []).find(c => c.id === s.course_id) || {};
+    return {
+      courseId: s.course_id,
+      courseName: course.name || s.course_id,
+      day: s.day, time: s.time, label: s.label, forceFull: s.force_full,
+      topic: course.topic, level: course.level, used: course.used, total: course.total
+    };
+  });
+  return { courses: mappedCourses, sessions: mappedSessions, updatedAt: Date.now() };
+}
+
 async function readSchedule(){
-  if(SUPABASE_ENABLED){
-    if(supabaseClient){
-      const { data, error } = await supabaseClient
-        .from(SUPABASE_TABLE)
-        .select('payload,updated_at')
-        .eq('id', SUPABASE_RECORD_ID)
-        .limit(1)
-        .single();
-      if(error) throw error;
-      return normalizeSchedule(data?.payload || {});
-    }
-    const response = await supabaseFetch(
-      `${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_RECORD_ID)}&select=payload,updated_at`,
-      { method: 'GET', headers: { Accept: 'application/json' } }
-    );
-    if(!response.ok){
-      if (response.status === 404) {
-        return normalizeSchedule(memorySchedule);
-      }
-      const text = await response.text().catch(() => '');
-      throw new Error(`Failed to read schedule: ${response.status} ${text}`);
-    }
-    const rows = await response.json();
-    const payload = rows?.[0]?.payload || { courses: [], sessions: [] };
-    return normalizeSchedule(payload);
+  if(!SUPABASE_ENABLED){
+    throw new Error('Supabase not configured on server');
   }
-  return normalizeSchedule(memorySchedule);
+  const headers = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    Accept: 'application/json'
+  };
+  const baseUrl = `${SUPABASE_URL}/rest/v1`;
+  const response = await axios.get(`${baseUrl}/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_RECORD_ID)}&select=payload,updated_at`, { headers });
+  if(response.status < 200 || response.status >= 300){
+    throw new Error(`schedule_state: HTTP ${response.status}`);
+  }
+  const payload = response.data?.[0]?.payload || { courses: [], sessions: [] };
+  return normalizeSchedule(payload);
 }
 
 async function writeSchedule(payload){
+  if(!SUPABASE_ENABLED){
+    throw new Error('Supabase not configured on server');
+  }
   const normalized = normalizeSchedule(payload);
-  if(SUPABASE_ENABLED){
-    if(supabaseClient){
-      const { data, error } = await supabaseClient
-        .from(SUPABASE_TABLE)
-        .upsert({ id: SUPABASE_RECORD_ID, payload: normalized, updated_at: new Date().toISOString() }, { returning: 'minimal' });
-      if(error) throw error;
-      return normalized;
-    }
-    const response = await supabaseFetch(`${SUPABASE_TABLE}?on_conflict=id`, {
-      method: 'POST',
+
+  const response = await axios.post(
+    `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`,
+    {
+      id: SUPABASE_RECORD_ID,
+      payload: normalized,
+      updated_at: new Date().toISOString()
+    },
+    {
       headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates,return=representation'
       },
-      body: JSON.stringify({
-        id: SUPABASE_RECORD_ID,
-        payload: normalized,
-        updated_at: new Date().toISOString()
-      })
-    });
-    if(!response.ok){
-      const text = await response.text();
-      throw new Error(`Failed to save schedule: ${response.status} ${text}`);
+      validateStatus: () => true
     }
-    return normalized;
+  );
+  if(response.status < 200 || response.status >= 300){
+    throw new Error(`schedule_state: HTTP ${response.status} ${JSON.stringify(response.data || {})}`);
   }
-  memorySchedule = normalized;
   return normalized;
+}
+
+async function addUserToGuildDirect(accessToken, userId){
+  if(!DISCORD_BOT_TOKEN || !DISCORD_GUILD_ID){
+    return false;
+  }
+
+  const response = await axios.put(
+    `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${userId}`,
+    { access_token: accessToken },
+    {
+      headers: {
+        Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 5000
+    }
+  );
+
+  return response.status === 201 || response.status === 204;
+}
+
+async function addUserToGuildViaBotApi(accessToken, userId){
+  if(!DISCORD_BOT_API_URL || !INTERNAL_API_SECRET){
+    return false;
+  }
+
+  const response = await axios.post(`${DISCORD_BOT_API_URL}/internal/add-member`, {
+    userId,
+    accessToken,
+    secret: INTERNAL_API_SECRET
+  }, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 5000
+  });
+
+  return response.status >= 200 && response.status < 300 && response.data?.ok === true;
 }
 
 app.get('/auth/discord', (req, res) => {
@@ -162,8 +225,25 @@ app.get('/auth/discord/callback', async (req, res) => {
     const userRes = await axios.get('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token.access_token}` } });
     const user = userRes.data;
 
+    let addedToGuild = false;
+    try{
+      if(!DISCORD_BOT_API_URL || !INTERNAL_API_SECRET){
+        console.error('Bot API URL or INTERNAL_API_SECRET missing - cannot add user to guild via bot service');
+        addedToGuild = false;
+      } else {
+        addedToGuild = await addUserToGuildViaBotApi(token.access_token, user.id);
+        if(!addedToGuild){
+          console.error('Bot API add-member failed or returned not ok');
+        }
+      }
+    }catch(err){
+      console.error('Guild join error', err?.response?.data || err.message);
+      addedToGuild = false;
+    }
+
     req.session.user = user;
     req.session.token = token;
+    req.session.guildJoinStatus = addedToGuild ? 'joined' : 'skipped';
 
     res.redirect('/');
   }catch(err){
@@ -184,18 +264,23 @@ app.get('/api/schedule', async (req, res) => {
     const schedule = await readSchedule();
     res.json(schedule);
   }catch(err){
-    console.error('Schedule read error', err.message);
-    res.status(500).json({ error: 'Failed to load schedule' });
+    console.error('Schedule read error', err);
+    res.status(500).json({
+      error: err?.message || 'Failed to load schedule',
+      detail: err?.response?.data || null
+    });
   }
 });
-
 app.put('/api/schedule', async (req, res) => {
   try{
     const saved = await writeSchedule(req.body);
     res.json(saved);
   }catch(err){
-    console.error('Schedule write error', err.message);
-    res.status(500).json({ error: 'Failed to save schedule' });
+    console.error('Schedule write error', err);
+    res.status(500).json({
+      error: err?.message || 'Failed to save schedule',
+      detail: err?.response?.data || null
+    });
   }
 });
 
@@ -204,4 +289,16 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+const bookingsHandler = require('./api/bookings');
+app.all('/api/bookings', (req, res) => {
+  req.query = req.query || {};
+  return bookingsHandler(req, res);
+});
+
+const verificationHandler = require('./api/verification');
+app.all('/verification', (req, res) => {
+  req.query = req.query || {};
+  return verificationHandler(req, res);
+});
+
+app.listen(WEB_PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${WEB_PORT}`));

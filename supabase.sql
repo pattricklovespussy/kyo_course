@@ -52,3 +52,19 @@ CREATE TABLE IF NOT EXISTS public.discord_users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_discord_users_discord_id ON public.discord_users (discord_id);
+
+-- UID verification requests (user submits UID, admin approves/rejects)
+CREATE TABLE IF NOT EXISTS public.discord_uid_verifications (
+  user_id text PRIMARY KEY,
+  discord_username text,
+  discord_uid text NOT NULL,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  submitted_at timestamptz NOT NULL DEFAULT now(),
+  reviewed_at timestamptz,
+  reviewed_by text,
+  review_note text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_uid_verifications_status ON public.discord_uid_verifications (status);
+CREATE INDEX IF NOT EXISTS idx_uid_verifications_submitted_at ON public.discord_uid_verifications (submitted_at DESC);

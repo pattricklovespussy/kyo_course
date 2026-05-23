@@ -1,13 +1,37 @@
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
 const { normalizeHttpUrl } = require('../../_utils');
 
 const SUPABASE_URL = normalizeHttpUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_DISCORD_USERS_TABLE = process.env.SUPABASE_DISCORD_USERS_TABLE || 'discord_users';
-const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  : null;
+
+const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+
+function getPublicBaseUrl(req) {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const proto = forwardedProto || (req.socket && req.socket.encrypted ? 'https' : 'http');
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if (!host) return '';
+  return `${proto}://${host}`;
+}
+
+async function supabaseRest(method, table, { query = '', data = null } = {}) {
+  if (!SUPABASE_ENABLED) throw new Error('Supabase not configured');
+  const response = await axios.request({
+    method,
+    url: `${SUPABASE_URL}/rest/v1/${table}${query ? `?${query}` : ''}`,
+    data,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation,resolution=merge-duplicates'
+    },
+    validateStatus: () => true
+  });
+  return response;
+}
 
 function setSessionCookie(res, payload) {
   const value = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -47,7 +71,7 @@ async function sendWelcomeDM(userId, username, botApiUrl, internalSecret) {
 }
 
 async function saveDiscordAuth(user, tokenRes) {
-  if (!supabase) {
+  if (!SUPABASE_ENABLED) {
     return { ok: false, reason: 'supabase-not-configured' };
   }
 
@@ -67,12 +91,13 @@ async function saveDiscordAuth(user, tokenRes) {
     return { ok: false, reason: 'missing-auth-fields' };
   }
 
-  const { error } = await supabase
-    .from(SUPABASE_DISCORD_USERS_TABLE)
-    .upsert(row, { onConflict: 'user_id' });
+  const response = await supabaseRest('POST', SUPABASE_DISCORD_USERS_TABLE, {
+    query: 'on_conflict=user_id',
+    data: row
+  });
 
-  if (error) {
-    return { ok: false, reason: error.message || String(error), raw: error };
+  if (response.status < 200 || response.status >= 300) {
+    return { ok: false, reason: `HTTP ${response.status}`, raw: response.data || null };
   }
 
   return { ok: true };
@@ -86,10 +111,14 @@ module.exports = async (req, res) => {
 
   const clientId = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-  const redirectUri = process.env.DISCORD_REDIRECT_URI || 'https://kyo-course.vercel.app/auth/discord/callback';
+  const baseUrl = String(process.env.APP_BASE_URL || process.env.PUBLIC_URL || getPublicBaseUrl(req) || '').trim().replace(/\/+$/, '');
+  const redirectUri = process.env.DISCORD_REDIRECT_URI || (baseUrl ? `${baseUrl}/auth/discord/callback` : '');
 
   if (!clientId || !clientSecret) {
     return res.status(500).send('Missing Discord OAuth env vars');
+  }
+  if (!redirectUri) {
+    return res.status(500).send('Missing redirect base URL');
   }
 
   try {

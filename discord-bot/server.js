@@ -6,32 +6,33 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const fs = require('fs');
 
-// DEBUG: print which .env is being loaded and whether key vars exist (temporary)
+// DEBUG: print env load status on startup
 try {
   const envPath = path.join(__dirname, '.env');
   const exists = fs.existsSync(envPath);
   function masked(v) {
     if (!v) return '<empty>';
-    if (v.length <= 8) return `${v.slice(0,2)}...${v.slice(-2)}`;
-    return `${v.slice(0,4)}...${v.slice(-4)}`;
+    if (v.length <= 8) return `${v.slice(0, 2)}...${v.slice(-2)}`;
+    return `${v.slice(0, 4)}...${v.slice(-4)}`;
   }
-  console.log(`◇ dotenv path: ${envPath} // exists: ${exists} // injected env (0) from .env`);
-  console.log(`◇ vars: DISCORD_BOT_TOKEN=${masked(process.env.DISCORD_BOT_TOKEN)}, DISCORD_GUILD_ID=${masked(process.env.DISCORD_GUILD_ID)}, INTERNAL_API_SECRET=${masked(process.env.INTERNAL_API_SECRET)}`);
+  console.log(`[CONFIG] dotenv path: ${envPath} | exists: ${exists}`);
+  console.log(`[CONFIG] DISCORD_BOT_TOKEN=${masked(process.env.DISCORD_BOT_TOKEN)}`);
+  console.log(`[CONFIG] DISCORD_GUILD_ID=${masked(process.env.DISCORD_GUILD_ID)}`);
+  console.log(`[CONFIG] INTERNAL_API_SECRET=${masked(process.env.INTERNAL_API_SECRET)}`);
 } catch (e) {
-  console.warn('◇ dotenv debug failed:', e?.message || e);
+  console.warn('[CONFIG] dotenv debug failed:', e?.message || e);
 }
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── CONFIG (đọc từ .env) ──────────────────────────────────────────────
 const {
   DISCORD_CLIENT_ID,
   DISCORD_CLIENT_SECRET,
   DISCORD_BOT_TOKEN,
-  DISCORD_GUILD_ID,       // ID server Discord của bạn
-  DISCORD_REDIRECT_URI,   // VD: http://localhost:3000/callback
+  DISCORD_GUILD_ID,
+  DISCORD_REDIRECT_URI,
   SESSION_SECRET,
 } = process.env;
 
@@ -40,16 +41,15 @@ const GUILD_ID = String(DISCORD_GUILD_ID || '').trim();
 const INTERNAL_SECRET = String(process.env.INTERNAL_API_SECRET || '').trim();
 
 if (!BOT_TOKEN) {
-  console.error('Missing DISCORD_BOT_TOKEN. Set it in Railway env vars for the bot service.');
+  console.error('[CONFIG] Missing DISCORD_BOT_TOKEN. Set it in env vars for the bot service.');
 }
 if (!GUILD_ID) {
-  console.error('Missing DISCORD_GUILD_ID. Set it in Railway env vars for the bot service.');
+  console.error('[CONFIG] Missing DISCORD_GUILD_ID. Set it in env vars for the bot service.');
 }
 if (!INTERNAL_SECRET) {
-  console.warn('Missing INTERNAL_API_SECRET. /internal/add-member will be forbidden.');
+  console.warn('[CONFIG] Missing INTERNAL_API_SECRET. /internal/add-member will be forbidden.');
 }
 
-// ── SESSION ───────────────────────────────────────────────────────────
 app.use(session({
   secret: SESSION_SECRET || 'kyo-secret-key',
   resave: false,
@@ -62,42 +62,60 @@ const bot = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
-// `ready` event was renamed to `clientReady` in discord.js v15.
-// Listen to both names but ensure the handler runs only once.
 let _readyHandled = false;
 function _handleReady() {
   if (_readyHandled) return;
   _readyHandled = true;
-  console.log(`✅ Bot đã online: ${bot.user.tag}`);
+  console.log(`[BOT] Online: ${bot.user.tag}`);
 }
 bot.once('clientReady', _handleReady);
 bot.once('ready', _handleReady);
 
 if (BOT_TOKEN) {
   bot.login(BOT_TOKEN).catch((err) => {
-    console.error('Discord bot login failed:', err?.message || err);
+    console.error('[BOT] Login failed:', err?.message || err);
     process.exitCode = 1;
   });
 } else {
-  console.error('Discord bot login skipped because DISCORD_BOT_TOKEN is missing.');
+  console.error('[BOT] Login skipped — DISCORD_BOT_TOKEN missing.');
 }
 
-// Helper: gửi DM cho user
 async function sendDM(userId, embed) {
   try {
     const user = await bot.users.fetch(userId);
     await user.send({ embeds: [embed] });
     return true;
   } catch (err) {
-    console.error('Không thể gửi DM:', err.message);
+    console.error('[DM] Failed to send DM to', userId, ':', err.message);
     return false;
   }
 }
 
-// Helper: thêm user vào server bằng Discord REST trực tiếp
+// FIX: Full detailed logging in addUserToGuild so we can see the exact Discord error
 async function addUserToGuild(accessToken, userId) {
+  console.log('[GUILD] addUserToGuild called');
+  console.log('[GUILD] userId:', userId);
+  console.log('[GUILD] accessToken prefix:', accessToken?.slice(0, 10), '...');
+  console.log('[GUILD] BOT_TOKEN prefix:', BOT_TOKEN?.slice(0, 10), '...');
+  console.log('[GUILD] GUILD_ID:', GUILD_ID);
+
+  if (!BOT_TOKEN) {
+    console.error('[GUILD] Cannot add member — BOT_TOKEN is empty');
+    return false;
+  }
+  if (!GUILD_ID) {
+    console.error('[GUILD] Cannot add member — GUILD_ID is empty');
+    return false;
+  }
+  if (!accessToken) {
+    console.error('[GUILD] Cannot add member — accessToken is empty');
+    return false;
+  }
+
   try {
     const url = `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${userId}`;
+    console.log('[GUILD] PUT', url);
+
     const response = await axios.put(url, {
       access_token: accessToken
     }, {
@@ -105,37 +123,52 @@ async function addUserToGuild(accessToken, userId) {
         Authorization: `Bot ${BOT_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      timeout: 5000
+      timeout: 8000,
+      // FIX: Don't throw on 4xx so we can log the full Discord error body
+      validateStatus: () => true
     });
-    return response.status === 201 || response.status === 204;
+
+    console.log('[GUILD] Discord response status:', response.status);
+    console.log('[GUILD] Discord response data:', JSON.stringify(response.data));
+
+    // 201 = added, 204 = already in guild (both are success)
+    if (response.status === 201 || response.status === 204) {
+      console.log('[GUILD] Success — user added or already in guild');
+      return true;
+    }
+
+    console.error('[GUILD] Unexpected status from Discord:', response.status, response.data);
+    return false;
   } catch (err) {
-    console.error('Lỗi add member:', {
-      status: err?.response?.status || null,
-      data: err?.response?.data || null,
-      message: err?.message || 'unknown-error'
+    console.error('[GUILD] Request threw unexpectedly:', {
+      message: err?.message,
+      status: err?.response?.status,
+      data: err?.response?.data
     });
     return false;
   }
 }
 
-// ── OAUTH2: Redirect đến Discord ─────────────────────────────────────
+// FIX: OAuth scope is now 'identify guilds.join' with prompt=consent
+// to force fresh token issuance with the correct scope
 app.get('/auth/discord', (req, res) => {
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: DISCORD_REDIRECT_URI,
     response_type: 'code',
     scope: 'identify guilds.join',
+    prompt: 'consent'
   });
   res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
 });
 
-// ── OAUTH2: Callback từ Discord ───────────────────────────────────────
 app.get('/callback', async (req, res) => {
   const { code } = req.query;
   if (!code) return res.redirect('/?error=no_code');
 
+  console.log('[AUTH] OAuth callback received');
+
   try {
-    // 1. Đổi code lấy access token
     const tokenRes = await axios.post('https://discord.com/api/oauth2/token',
       new URLSearchParams({
         client_id: DISCORD_CLIENT_ID,
@@ -148,28 +181,33 @@ app.get('/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    const { access_token } = tokenRes.data;
+    const { access_token, scope: grantedScope } = tokenRes.data;
+    console.log('[AUTH] Token received. Granted scopes:', grantedScope);
 
-    // 2. Lấy thông tin user
+    // FIX: Warn if guilds.join scope is missing from the granted token
+    if (!grantedScope || !grantedScope.includes('guilds.join')) {
+      console.error('[AUTH] WARNING: guilds.join scope NOT in granted token! Granted:', grantedScope);
+    }
+
     const userRes = await axios.get('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
     const user = userRes.data;
+    console.log(`[AUTH] User: ${user.username}#${user.discriminator} (${user.id})`);
 
-    // 3. Lưu session
     req.session.user = { ...user, access_token };
     req.session.loggedIn = true;
 
-    // 4. Tự động thêm vào server
-    await addUserToGuild(access_token, user.id);
+    const guildResult = await addUserToGuild(access_token, user.id);
+    console.log('[GUILD] addUserToGuild result:', guildResult);
 
-    // 5. Gửi DM đăng nhập thành công
+    // Send DM regardless of guild join result
     const loginEmbed = new EmbedBuilder()
       .setColor(0xE8B84B)
       .setTitle('✅ Đăng nhập thành công!')
       .setDescription(`Xin chào **${user.username}**! Bạn đã đăng nhập vào **TradingWithKyo Schedule Hub** thành công.`)
       .addFields(
-        { name: '🏫 Server', value: 'Bạn đã được thêm vào server TradingWithKyo', inline: false },
+        { name: '🏫 Server', value: guildResult ? 'Bạn đã được thêm vào server TradingWithKyo' : 'Không thể tự động thêm vào server — vui lòng liên hệ admin', inline: false },
         { name: '📅 Tiếp theo', value: 'Hãy chọn một slot học và đặt lịch của bạn!', inline: false }
       )
       .setFooter({ text: 'TradingWithKyo — Schedule Hub' })
@@ -179,36 +217,47 @@ app.get('/callback', async (req, res) => {
 
     res.redirect('/?login=success');
   } catch (err) {
-    console.error('OAuth error:', err.response?.data || err.message);
+    console.error('[AUTH] OAuth error:', JSON.stringify({
+      status: err?.response?.status,
+      data: err?.response?.data,
+      message: err?.message
+    }, null, 2));
     res.redirect('/?error=auth_failed');
   }
 });
 
-// Internal: allow API server to ask the bot to add a member to the guild.
-// Protect with an internal secret: set INTERNAL_API_SECRET in the bot env.
+// Internal endpoint: web server calls this to add a user to the guild
 app.post('/internal/add-member', async (req, res) => {
   const secret = req.body?.secret || req.headers['x-internal-secret'];
+
+  console.log('[INTERNAL] /add-member called');
+  console.log('[INTERNAL] Secret match:', secret === INTERNAL_SECRET);
+
   if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
+    console.error('[INTERNAL] Forbidden — secret mismatch');
     return res.status(403).json({ ok: false, message: 'forbidden' });
   }
 
   const userId = req.body?.userId;
   const accessToken = req.body?.accessToken;
-  if (!userId || !accessToken) return res.status(400).json({ ok: false, message: 'missing userId or accessToken' });
+
+  if (!userId || !accessToken) {
+    return res.status(400).json({ ok: false, message: 'missing userId or accessToken' });
+  }
 
   try {
     const ok = await addUserToGuild(accessToken, userId);
     if (!ok) {
-      return res.status(500).json({ ok: false, message: 'failed to add member' });
+      return res.status(500).json({ ok: false, message: 'failed to add member — check bot logs for Discord error details' });
     }
     return res.json({ ok: true });
   } catch (err) {
-    console.error('internal add-member failed:', err?.response?.data || err.message);
+    console.error('[INTERNAL] add-member threw:', err?.response?.data || err.message);
     return res.status(500).json({ ok: false, message: err.message, raw: err?.response?.data || null });
   }
 });
 
-// Internal: allow API server to ask the bot to send a welcome DM
+// Internal endpoint: send a welcome DM via bot
 app.post('/internal/send-dm', async (req, res) => {
   const secret = req.body?.secret || req.headers['x-internal-secret'];
   if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
@@ -232,18 +281,14 @@ app.post('/internal/send-dm', async (req, res) => {
       .setTimestamp();
 
     const success = await sendDM(userId, loginEmbed);
-    if (success) {
-      return res.json({ ok: true });
-    } else {
-      return res.status(500).json({ ok: false, message: 'Failed to send DM' });
-    }
+    if (success) return res.json({ ok: true });
+    return res.status(500).json({ ok: false, message: 'Failed to send DM' });
   } catch (err) {
-    console.error('internal send-dm failed:', err.message);
+    console.error('[INTERNAL] send-dm failed:', err.message);
     return res.status(500).json({ ok: false, message: err.message });
   }
 });
 
-// ── API: Lấy thông tin user hiện tại ─────────────────────────────────
 app.get('/me', (req, res) => {
   if (req.session.loggedIn && req.session.user) {
     res.json({ loggedIn: true, user: req.session.user });
@@ -252,13 +297,11 @@ app.get('/me', (req, res) => {
   }
 });
 
-// ── API: Đăng xuất ────────────────────────────────────────────────────
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/');
 });
 
-// ── API: Đặt slot ─────────────────────────────────────────────────────
 app.post('/api/bookings', async (req, res) => {
   if (!req.session.loggedIn) {
     return res.status(401).json({ error: 'Chưa đăng nhập' });
@@ -267,7 +310,6 @@ app.post('/api/bookings', async (req, res) => {
   const { courseId, day, time, slotKey } = req.body;
   const user = req.session.user;
 
-  // Lưu booking vào session (thay bằng DB thật nếu cần)
   if (!req.session.bookings) req.session.bookings = [];
   const booking = {
     id: Date.now().toString(),
@@ -277,7 +319,6 @@ app.post('/api/bookings', async (req, res) => {
   };
   req.session.bookings.push(booking);
 
-  // Gửi DM thông báo book slot thành công
   const bookEmbed = new EmbedBuilder()
     .setColor(0x4DB87A)
     .setTitle('📅 Đặt slot thành công!')
@@ -292,11 +333,9 @@ app.post('/api/bookings', async (req, res) => {
     .setTimestamp();
 
   await sendDM(user.id, bookEmbed);
-
   res.json({ success: true, booking });
 });
 
-// ── API: Huỷ slot ─────────────────────────────────────────────────────
 app.delete('/api/bookings/:bookingId', async (req, res) => {
   if (!req.session.loggedIn) {
     return res.status(401).json({ error: 'Chưa đăng nhập' });
@@ -305,12 +344,10 @@ app.delete('/api/bookings/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   const user = req.session.user;
 
-  // Xoá booking khỏi session
   if (req.session.bookings) {
     req.session.bookings = req.session.bookings.filter(b => b.id !== bookingId);
   }
 
-  // Gửi DM thông báo huỷ thành công
   const cancelEmbed = new EmbedBuilder()
     .setColor(0xE06060)
     .setTitle('❌ Huỷ slot thành công')
@@ -323,11 +360,9 @@ app.delete('/api/bookings/:bookingId', async (req, res) => {
     .setTimestamp();
 
   await sendDM(user.id, cancelEmbed);
-
   res.json({ success: true });
 });
 
-// ── API: Lấy danh sách booking của user ──────────────────────────────
 app.get('/api/my-bookings', (req, res) => {
   if (!req.session.loggedIn) {
     return res.status(401).json({ error: 'Chưa đăng nhập' });
@@ -335,8 +370,7 @@ app.get('/api/my-bookings', (req, res) => {
   res.json({ bookings: req.session.bookings || [] });
 });
 
-// ── START SERVER ──────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server chạy tại http://localhost:${PORT}`);
+const BOT_PORT = process.env.BOT_PORT || process.env.PORT || 3000;
+app.listen(BOT_PORT, () => {
+  console.log(`[SERVER] Bot server running on http://localhost:${BOT_PORT}`);
 });
